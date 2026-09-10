@@ -142,3 +142,118 @@
     color: var(--color-foreground);
   }
 }
+
+/* ===================================================================
+ * Financial Document OS — "Executive Atelier" design language
+ * Deep ink surfaces, brass accent, serif display type.
+ * =================================================================== */
+:root,
+.dark {
+  --radius: 0.5rem;
+  --background: oklch(0.17 0.014 264);
+  --foreground: oklch(0.95 0.006 258);
+  --card: oklch(0.212 0.015 264);
+  --card-foreground: oklch(0.95 0.006 258);
+  --popover: oklch(0.212 0.015 264);
+  --popover-foreground: oklch(0.95 0.006 258);
+  --primary: oklch(0.79 0.118 84);
+  --primary-foreground: oklch(0.2 0.02 84);
+  --secondary: oklch(0.26 0.016 264);
+  --secondary-foreground: oklch(0.93 0.006 258);
+  --muted: oklch(0.26 0.016 264);
+  --muted-foreground: oklch(0.71 0.017 258);
+  --accent: oklch(0.3 0.02 264);
+  --accent-foreground: oklch(0.95 0.006 258);
+  --destructive: oklch(0.61 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 258);
+  --success: oklch(0.72 0.14 158);
+  --success-foreground: oklch(0.19 0.03 158);
+  --warning: oklch(0.8 0.13 78);
+  --warning-foreground: oklch(0.22 0.03 78);
+  --border: oklch(0.3 0.016 264);
+  --input: oklch(0.3 0.016 264);
+  --ring: oklch(0.79 0.118 84);
+  --chart-1: oklch(0.79 0.118 84);
+  --chart-2: oklch(0.72 0.14 158);
+  --chart-3: oklch(0.66 0.13 250);
+  --chart-4: oklch(0.68 0.16 20);
+  --chart-5: oklch(0.75 0.09 300);
+  --sidebar: oklch(0.145 0.014 264);
+  --sidebar-foreground: oklch(0.92 0.006 258);
+  --sidebar-primary: oklch(0.79 0.118 84);
+  --sidebar-primary-foreground: oklch(0.2 0.02 84);
+  --sidebar-accent: oklch(0.26 0.016 264);
+  --sidebar-accent-foreground: oklch(0.95 0.006 258);
+  --sidebar-border: oklch(0.28 0.016 264);
+  --sidebar-ring: oklch(0.79 0.118 84);
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --paper: oklch(0.985 0.005 90);
+  --paper-foreground: oklch(0.22 0.015 264);
+  --paper-muted: oklch(0.48 0.012 264);
+  --paper-border: oklch(0.9 0.008 90);
+}
+
+@theme inline {
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-border: var(--paper-border);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+  font-feature-settings: "cv02", "ss01";
+}
+
+.font-display,
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* One rendering system: the same .doc-sheet markup is used for live preview,
+   print, PDF (via print) and PNG/JPG (via html-to-image). */
+.doc-sheet {
+  background: var(--paper);
+  color: var(--paper-foreground);
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 14mm;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  body {
+    background: #fff;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .doc-sheet {
+    width: 210mm;
+    box-shadow: none;
+    transform: none !important;
+  }
+}
