@@ -18,9 +18,15 @@ export type ClientBalance = Database["public"]["Views"]["client_balances"]["Row"
 
 const ACTIVE_KEY = "fdos.activeBusiness";
 
-function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
+function unwrap<T>({
+  data,
+  error,
+}: {
+  data: T | null;
+  error: { message: string } | null;
+}): NonNullable<T> {
   if (error) throw new Error(error.message);
-  return data as T;
+  return data as NonNullable<T>;
 }
 
 /* ------------------------------------------------------------------ session */
@@ -448,11 +454,11 @@ export function useRecordPayment(businessId: string | null) {
           _channel: input.channel,
           _currency: input.currency,
           _payment_date: new Date(input.payment_date).toISOString(),
-          _reference: input.reference ?? null,
-          _channel_txn_id: input.channel_txn_id ?? null,
-          _payer_name: input.payer_name ?? null,
-          _payer_phone: input.payer_phone ?? null,
-          _notes: input.notes ?? null,
+          _reference: input.reference ?? undefined,
+          _channel_txn_id: input.channel_txn_id ?? undefined,
+          _payer_name: input.payer_name ?? undefined,
+          _payer_phone: input.payer_phone ?? undefined,
+          _notes: input.notes ?? undefined,
           _allocations: input.allocations ?? [],
         }),
       );
