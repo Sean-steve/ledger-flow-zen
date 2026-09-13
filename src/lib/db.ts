@@ -18,15 +18,12 @@ export type ClientBalance = Database["public"]["Views"]["client_balances"]["Row"
 
 const ACTIVE_KEY = "fdos.activeBusiness";
 
-function unwrap<T>({
-  data,
-  error,
-}: {
-  data: T | null;
-  error: { message: string } | null;
-}): NonNullable<T> {
+function unwrap<R extends { data: unknown; error: unknown }>(
+  response: R,
+): NonNullable<Extract<R, { error: null }>["data"]> {
+  const { data, error } = response as { data: unknown; error: { message: string } | null };
   if (error) throw new Error(error.message);
-  return data as NonNullable<T>;
+  return data as NonNullable<Extract<R, { error: null }>["data"]>;
 }
 
 /* ------------------------------------------------------------------ session */
@@ -454,11 +451,11 @@ export function useRecordPayment(businessId: string | null) {
           _channel: input.channel,
           _currency: input.currency,
           _payment_date: new Date(input.payment_date).toISOString(),
-          _reference: input.reference ?? undefined,
-          _channel_txn_id: input.channel_txn_id ?? undefined,
-          _payer_name: input.payer_name ?? undefined,
-          _payer_phone: input.payer_phone ?? undefined,
-          _notes: input.notes ?? undefined,
+          ...(input.reference ? { _reference: input.reference } : {}),
+          ...(input.channel_txn_id ? { _channel_txn_id: input.channel_txn_id } : {}),
+          ...(input.payer_name ? { _payer_name: input.payer_name } : {}),
+          ...(input.payer_phone ? { _payer_phone: input.payer_phone } : {}),
+          ...(input.notes ? { _notes: input.notes } : {}),
           _allocations: input.allocations ?? [],
         }),
       );
