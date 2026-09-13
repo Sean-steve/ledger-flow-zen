@@ -118,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const switcher =
     workspace.businesses.length > 1 ? (
-      <Select value={workspace.businessId ?? undefined} onValueChange={workspace.select}>
+      <Select value={workspace.businessId ?? ""} onValueChange={workspace.select}>
         <SelectTrigger className="w-full">
           <SelectValue />
         </SelectTrigger>
