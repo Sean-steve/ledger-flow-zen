@@ -18,15 +18,12 @@ export type ClientBalance = Database["public"]["Views"]["client_balances"]["Row"
 
 const ACTIVE_KEY = "fdos.activeBusiness";
 
-function unwrap<T>({
-  data,
-  error,
-}: {
-  data: T | null;
-  error: { message: string } | null;
-}): NonNullable<T> {
+function unwrap<R extends { data: unknown; error: unknown }>(
+  response: R,
+): NonNullable<Extract<R, { error: null }>["data"]> {
+  const { data, error } = response as { data: unknown; error: { message: string } | null };
   if (error) throw new Error(error.message);
-  return data as NonNullable<T>;
+  return data as NonNullable<Extract<R, { error: null }>["data"]>;
 }
 
 /* ------------------------------------------------------------------ session */
