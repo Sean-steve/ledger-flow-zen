@@ -67,7 +67,7 @@ function ClientsPage() {
   const [search, setSearch] = useState("");
 
   const balanceById = new Map(
-    (balances.data ?? []).map((b) => [b.client_id, Number(b.balance ?? 0)]),
+    (balances.data ?? []).map((b) => [b.client_id, Number(b.outstanding ?? 0)]),
   );
   const list = (clients.data ?? []).filter((c) =>
     `${c.name} ${c.email ?? ""} ${c.kra_pin ?? ""}`.toLowerCase().includes(search.toLowerCase()),
