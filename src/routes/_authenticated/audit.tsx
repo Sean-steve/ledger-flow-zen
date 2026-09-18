@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/audit")({
       },
     ],
   }),
-  component: AuditPage;
+  component: AuditPage,
 });
 
 function AuditPage() {
