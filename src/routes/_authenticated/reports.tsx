@@ -264,7 +264,7 @@ function ReportsPage() {
                         {money(row.outstanding, row.currency ?? currency)}
                       </span>
                       {Number(row.overdue ?? 0) > 0 ? (
-                        <Badge className={STATUS_TONE.OVERDUE} variant="secondary">
+                        <Badge className={STATUS_TONE["OVERDUE"]} variant="secondary">
                           {money(row.overdue, row.currency ?? currency)} overdue
                         </Badge>
                       ) : null}
