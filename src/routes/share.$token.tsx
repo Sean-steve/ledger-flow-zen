@@ -115,7 +115,7 @@ function SharedPage() {
               business={payload.business}
               document={payload.document}
               items={payload.items}
-              ledger={payload.ledger}
+              ledger={payload.ledger ?? null}
             />
           ) : (
             <ReceiptSheet

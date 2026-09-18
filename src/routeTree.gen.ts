@@ -19,6 +19,7 @@ import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedReceiptsRouteImport } from './routes/_authenticated/receipts'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authenticated/documents.index'
 import { Route as AuthenticatedDocumentsDocumentIdRouteImport } from './routes/_authenticated/documents.$documentId'
 import { Route as AuthenticatedDocumentsNewRouteImport } from './routes/_authenticated/documents.new'
@@ -72,6 +73,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedDocumentsIndexRoute =
   AuthenticatedDocumentsIndexRouteImport.update({
     id: '/documents/',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/receipts': typeof AuthenticatedReceiptsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/share/$token': typeof ShareTokenRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/documents/': typeof AuthenticatedDocumentsIndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/receipts': typeof AuthenticatedReceiptsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/share/$token': typeof ShareTokenRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/documents': typeof AuthenticatedDocumentsIndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/receipts': typeof AuthenticatedReceiptsRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/share/$token': typeof ShareTokenRoute
   '/_authenticated/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/_authenticated/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/_authenticated/documents/': typeof AuthenticatedDocumentsIndexRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/reports'
     | '/settings'
+    | '/share/$token'
     | '/documents/$documentId'
     | '/documents/new'
     | '/documents/'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/reports'
     | '/settings'
+    | '/share/$token'
     | '/documents/$documentId'
     | '/documents/new'
     | '/documents'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated/receipts'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
+    | '/share/$token'
     | '/_authenticated/documents/$documentId'
     | '/_authenticated/documents/new'
     | '/_authenticated/documents/'
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/documents/': {
       id: '/_authenticated/documents/'
       path: '/documents'
@@ -316,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ShareTokenRoute: ShareTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
