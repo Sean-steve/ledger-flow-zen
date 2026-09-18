@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/auth")({
-  ssr: false,
   head: () => ({
     meta: [
       { title: "Sign in — Financial Document OS" },
@@ -25,6 +24,7 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getUser();
     if (data.user) throw redirect({ to: "/dashboard" });
   },
