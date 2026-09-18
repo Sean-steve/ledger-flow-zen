@@ -38,6 +38,28 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+
+  async function resendConfirmation() {
+    if (!email) {
+      toast.error("Enter your email address first");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast.success("New confirmation link sent. Check your inbox.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send the email");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -53,16 +75,24 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          toast.success("Account created. Confirm your email address, then sign in.");
-          setMode("signin");
+        setNeedsConfirmation(true);
+        setMode("signin");
+        toast.success("Account created. Confirm your email address, then sign in.");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (
+          (error as { code?: string }).code === "email_not_confirmed" ||
+          /not confirmed/i.test(error.message)
+        ) {
+          setNeedsConfirmation(true);
+          toast.error("Your email address isn't confirmed yet.");
           return;
         }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        throw error;
       }
+      setNeedsConfirmation(false);
       navigate({ to: "/dashboard", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not sign you in");
