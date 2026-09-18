@@ -153,6 +153,26 @@ function AuthPage() {
           </Button>
         </form>
 
+        {needsConfirmation ? (
+          <div className="mt-4 rounded-md border border-border bg-card p-4 text-sm">
+            <p className="text-foreground">Confirm your email address to continue</p>
+            <p className="mt-1 text-muted-foreground">
+              We sent a link to {email || "your inbox"}. Confirmation links expire, so request a
+              fresh one if yours no longer works.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              disabled={busy}
+              onClick={resendConfirmation}
+            >
+              Resend confirmation email
+            </Button>
+          </div>
+        ) : null}
+
+
         <button
           type="button"
           className="mt-6 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
