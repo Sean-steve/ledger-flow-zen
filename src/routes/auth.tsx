@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -69,8 +69,6 @@ function AuthPage() {
       setBusy(false);
     }
   }
-
-  if (!mounted) return null;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
