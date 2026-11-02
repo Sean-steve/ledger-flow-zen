@@ -97,7 +97,7 @@ GRANT SELECT ON public.unallocated_payment_balances TO authenticated;
 
 -- The only public payment-write API. The idempotency lock serialises retries.
 CREATE OR REPLACE FUNCTION public.record_payment_v2(_request jsonb)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 #variable_conflict use_variable
 DECLARE
   business_id uuid := NULLIF(_request->>'business_id','')::uuid;
