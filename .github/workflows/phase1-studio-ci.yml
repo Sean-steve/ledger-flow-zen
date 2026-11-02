@@ -1,0 +1,27 @@
+name: Phase 1 Document Studio Certification
+on:
+  push:
+    branches:
+      - 'phase1/**'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'docs/phase-1/**'
+      - '.github/workflows/phase1-studio-ci.yml'
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install declared dependencies
+        run: bun install --frozen-lockfile
+      - name: Build application and regenerate TanStack routes
+        run: bun run build
+      - name: TypeScript validation
+        run: bunx tsc --noEmit
+      - name: Run template registry tests
+        run: bunx vitest run src/lib/document-templates.test.ts
