@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/auth")({
       { property: "og:title", content: "Sign in — Financial Document OS" },
       {
         property: "og:description",
-        content: "Secure access to your invoicing and payment ledger.",
+        content: "Local-only access to your invoicing and payment ledger.",
       },
     ],
   }),
@@ -38,28 +38,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
-  async function resendConfirmation() {
-    if (!email) {
-      toast.error("Enter your email address first");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-      });
-      if (error) throw error;
-      toast.success("New confirmation link sent. Check your inbox.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not send the email");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -75,24 +54,12 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        setNeedsConfirmation(true);
-        setMode("signin");
-        toast.success("Account created. Confirm your email address, then sign in.");
+        toast.success("Local account created");
+        navigate({ to: "/dashboard", replace: true });
         return;
       }
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        if (
-          (error as { code?: string }).code === "email_not_confirmed" ||
-          /not confirmed/i.test(error.message)
-        ) {
-          setNeedsConfirmation(true);
-          toast.error("Your email address isn't confirmed yet.");
-          return;
-        }
-        throw error;
-      }
-      setNeedsConfirmation(false);
+      if (error) throw error;
       navigate({ to: "/dashboard", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not sign you in");
@@ -109,7 +76,7 @@ function AuthPage() {
           {mode === "signin" ? "Sign in to your ledger" : "Create your workspace"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Invoices, quotations, credit notes, receipts and payment reconciliation in one place.
+          Local PostgreSQL development. Your records remain on this laptop.
         </p>
 
         <form onSubmit={submit} className="mt-8 space-y-4">
@@ -144,7 +111,7 @@ function AuthPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              minLength={8}
+              minLength={10}
               required
             />
           </div>
@@ -153,24 +120,7 @@ function AuthPage() {
           </Button>
         </form>
 
-        {needsConfirmation ? (
-          <div className="mt-4 rounded-md border border-border bg-card p-4 text-sm">
-            <p className="text-foreground">Confirm your email address to continue</p>
-            <p className="mt-1 text-muted-foreground">
-              We sent a link to {email || "your inbox"}. Confirmation links expire, so request a
-              fresh one if yours no longer works.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-3 w-full"
-              disabled={busy}
-              onClick={resendConfirmation}
-            >
-              Resend confirmation email
-            </Button>
-          </div>
-        ) : null}
+
 
 
         <button

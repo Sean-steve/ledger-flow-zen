@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/local/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tables = Database["public"]["Tables"];
@@ -143,7 +143,14 @@ export function useSaveClient(businessId: string | null) {
     mutationFn: async (input: Partial<Client> & { name: string }) => {
       if (!businessId) throw new Error("No business selected");
       if (input.id) {
-        const { id, ...patch } = input;
+        const { id } = input;
+        const patch = {
+          name: input.name, contact_person: input.contact_person,
+          email: input.email, phone: input.phone, kra_pin: input.kra_pin,
+          address: input.address, city: input.city, country: input.country,
+          currency: input.currency, payment_terms_days: input.payment_terms_days,
+          credit_limit: input.credit_limit, status: input.status, notes: input.notes,
+        };
         return unwrap(await supabase.from("clients").update(patch).eq("id", id).select().single());
       }
       return unwrap(

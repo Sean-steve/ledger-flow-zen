@@ -18,7 +18,7 @@ const editable = {
     "signatory_title","default_notes","default_legal_terms",
   ]),
   clients: new Set([
-    "business_id","name","email","phone","address","kra_pin","currency",
+    "business_id","name","email","phone","address","city","country","kra_pin","currency",
     "payment_terms_days","credit_limit","status","notes","contact_person",
   ]),
   share_links: new Set(["business_id","document_id","receipt_id","token","revoked_at"]),
@@ -119,7 +119,7 @@ export async function queryTable(userId, request) {
 }
 
 const functions = {
-  create_business: [[" _name","text"],["_base_currency","text"]],
+  create_business: [["_name","text"],["_base_currency","text"]],
   save_document_draft: [["_business_id","uuid"],["_client_id","uuid"],["_payload","jsonb"],["_items","jsonb"],["_document_id","uuid"]],
   finalize_document: [["_document_id","uuid"]],
   issue_credit_note: [["_credit_note_id","uuid"]],
