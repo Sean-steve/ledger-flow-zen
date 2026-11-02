@@ -109,7 +109,7 @@ function SharedPage() {
         </Button>
       </div>
       <div className="print-area overflow-auto" ref={sheetRef}>
-        <div className="origin-top-left scale-[0.62] sm:scale-100">
+        <div className="origin-top-left scale-[0.62] sm:scale-100 print:transform-none">
           {payload.kind === "document" ? (
             <DocumentSheet
               business={payload.business}

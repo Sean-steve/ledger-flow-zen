@@ -86,7 +86,7 @@ function ReceiptsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:hidden">
       <header>
         <h1 className="text-3xl">Receipts</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -53,7 +53,7 @@ function StudioPage() {
 
   return (
     <div className="space-y-7">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Premium design collection</p>
           <h1 className="mt-2 text-4xl">Document Studio</h1>
@@ -67,7 +67,7 @@ function StudioPage() {
         </Button>
       </header>
 
-      <section className="space-y-4" aria-labelledby="template-heading">
+      <section className="space-y-4 print:hidden" aria-labelledby="template-heading">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 id="template-heading" className="text-2xl">Signature templates</h2>
@@ -82,7 +82,7 @@ function StudioPage() {
       </section>
 
       <section className="space-y-4" aria-labelledby="preview-heading">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
           <div>
             <h2 id="preview-heading" className="text-2xl">Live document preview</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -116,8 +116,8 @@ function StudioPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="overflow-hidden">
-            <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+          <Card className="overflow-hidden print:border-0 print:bg-white print:shadow-none">
+            <CardHeader className="flex flex-wrap items-start justify-between gap-3 print:hidden">
               <div>
                 <CardTitle className="text-lg">{getTemplateById(selected).name}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">Design comparison only — your saved document is unchanged.</p>
@@ -135,7 +135,7 @@ function StudioPage() {
                 </SelectContent>
               </Select>
             </CardHeader>
-            <CardContent className="p-0 sm:p-6">
+            <CardContent className="p-0 sm:p-6 print:p-0">
               {preview.isPending ? (
                 <p className="py-12 text-center text-sm text-muted-foreground">Rendering document…</p>
               ) : preview.isError || !preview.data ? (
@@ -143,7 +143,7 @@ function StudioPage() {
                   Could not open that document. Choose another document.
                 </p>
               ) : (
-                <div ref={sheetRef} className="print-area overflow-x-auto rounded-md bg-muted/30 p-2 sm:p-4">
+                <div ref={sheetRef} className="print-area overflow-x-auto rounded-md bg-muted/30 p-2 sm:p-4 print:overflow-visible print:rounded-none print:bg-white print:p-0">
                   <DocumentSheet
                     business={preview.data.business}
                     document={preview.data.document}
