@@ -341,3 +341,8 @@ h3 {
   .doc-sheet { min-height: 0; padding: 16mm 14mm; break-after: auto; }
   .doc-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* A hypothetical Studio design is never an official invoice export. */
+@media print {
+  .studio-route { display: none !important; }
+}

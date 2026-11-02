@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useRef } from "react";
-import { Check, Eye, FileText, Printer, Save } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, FileText, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/components/app-shell";
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDocument, useDocuments, useUpdateBusiness } from "@/lib/db";
 import { getTemplateById, type TemplateId } from "@/lib/document-templates";
-import { exportSheetImage, printSheet } from "@/lib/doc-export";
 
 export const Route = createFileRoute("/_authenticated/studio")({
   head: () => ({
@@ -32,7 +31,6 @@ function StudioPage() {
   const [chosenDocument, setChosenDocument] = useState("");
   const previewId = chosenDocument || documents.data?.[0]?.id;
   const preview = useDocument(previewId);
-  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSelected(defaultTemplate);
@@ -48,11 +46,8 @@ function StudioPage() {
     }
   }
 
-  const canPreview = !!preview.data;
-  const filename = preview.data?.document.doc_number ?? "document-preview";
-
   return (
-    <div className="space-y-7">
+    <div className="studio-route space-y-7">
       <header className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Premium design collection</p>
@@ -89,16 +84,13 @@ function StudioPage() {
               Uses your stored document information. A design preview does not edit, issue or renumber the original.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 print:hidden">
-            {canPreview && <Button variant="outline" onClick={printSheet}><Printer className="size-4" /> Print / Save PDF</Button>}
-            {canPreview && (
-              <Button variant="outline" onClick={() =>
-                exportSheetImage(sheetRef.current, filename, "png").catch(e =>
-                  toast.error(e instanceof Error ? e.message : "Export failed")
-                )
-              }><Eye className="size-4" /> PNG</Button>
-            )}
-          </div>
+          {previewId && (
+            <Button asChild variant="outline">
+              <Link to="/documents/$documentId" params={{ documentId: previewId }}>
+                Open saved document for official exports
+              </Link>
+            </Button>
+          )}
         </div>
         {documents.isPending ? (
           <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading your documents…</CardContent></Card>
@@ -120,7 +112,7 @@ function StudioPage() {
             <CardHeader className="flex flex-wrap items-start justify-between gap-3 print:hidden">
               <div>
                 <CardTitle className="text-lg">{getTemplateById(selected).name}</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Design comparison only — your saved document is unchanged.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Design comparison only — your saved document is unchanged. Official exports use its saved template.</p>
               </div>
               <Select value={previewId ?? ""} onValueChange={setChosenDocument}>
                 <SelectTrigger aria-label="Choose document to preview" className="w-full sm:w-72">
@@ -143,7 +135,7 @@ function StudioPage() {
                   Could not open that document. Choose another document.
                 </p>
               ) : (
-                <div ref={sheetRef} className="print-area overflow-x-auto rounded-md bg-muted/30 p-2 sm:p-4 print:overflow-visible print:rounded-none print:bg-white print:p-0">
+                <div className="studio-design-preview overflow-x-auto rounded-md bg-muted/30 p-2 sm:p-4 print:overflow-visible print:rounded-none print:bg-white print:p-0">
                   <DocumentSheet
                     business={preview.data.business}
                     document={preview.data.document}
