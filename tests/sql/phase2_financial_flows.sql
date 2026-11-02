@@ -105,6 +105,73 @@ BEGIN
 END;
 $test$;
 
+
+-- Owner and tenant rules, including a live ADMIN role with lesser permissions.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+DO $owners$
+DECLARE
+  b uuid; other_business uuid; c uuid; other_client uuid;
+  foreign_doc public.documents;
+  denied boolean;
+BEGIN
+  SELECT id INTO b FROM public.create_business('Phase2 owner guard A','KES');
+  SELECT id INTO other_business FROM public.create_business('Phase2 owner guard B','KES');
+  INSERT INTO public.clients(business_id,name,currency)
+    VALUES(b,'Scoped client','KES') RETURNING id INTO c;
+  INSERT INTO public.clients(business_id,name,currency)
+    VALUES(other_business,'Other business client','KES') RETURNING id INTO other_client;
+  INSERT INTO public.business_members(business_id,user_id,role)
+    VALUES(b,'55555555-5555-4555-8555-555555555555','ADMIN');
+
+  denied:=false;
+  BEGIN UPDATE public.businesses SET owner_id='55555555-5555-4555-8555-555555555555' WHERE id=b;
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'owner id was mutable'; END IF;
+
+  denied:=false;
+  BEGIN UPDATE public.business_members SET role='VIEWER'
+    WHERE business_id=b AND user_id=auth.uid();
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'last owner was demoted'; END IF;
+
+  denied:=false;
+  BEGIN UPDATE public.clients SET business_id=other_business WHERE id=c;
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'cross-business client transfer succeeded'; END IF;
+
+  foreign_doc:=public.save_document_draft(other_business,other_client,
+    '{"type":"INVOICE","currency":"KES"}',
+    '[{"description":"Other document","quantity":1,"unit_price":100,"tax_category":"VAT_16"}]',null);
+  foreign_doc:=public.finalize_document(foreign_doc.id);
+  denied:=false;
+  BEGIN INSERT INTO public.share_links(business_id,document_id,token)
+    VALUES(b,foreign_doc.id,'phase2-invalid-cross-business-share-1234567890');
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'cross-business share was allowed'; END IF;
+
+  RAISE NOTICE 'Phase 2 business/tenant/last-owner guard checks PASS';
+END;
+$owners$;
+SELECT set_config('request.jwt.claim.sub','55555555-5555-4555-8555-555555555555',false);
+DO $admin$
+DECLARE b uuid; denied boolean := false;
+BEGIN
+  SELECT id INTO b FROM public.businesses WHERE name='Phase2 owner guard A';
+  IF b IS NULL THEN RAISE EXCEPTION 'admin cannot see assigned business'; END IF;
+  UPDATE public.business_members SET role='OWNER'
+  WHERE business_id=b AND user_id=auth.uid();
+  IF (SELECT role FROM public.business_members
+       WHERE business_id=b AND user_id=auth.uid())='OWNER' THEN
+    RAISE EXCEPTION 'admin self-promoted to OWNER'; END IF;
+  BEGIN UPDATE public.businesses SET owner_id=auth.uid() WHERE id=b;
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'admin changed business owner'; END IF;
+  RAISE NOTICE 'Phase 2 admin role escalation checks PASS';
+END;
+$admin$;
+RESET ROLE;
+
 RESET ROLE;
 SET ROLE anon;
 DO $test$

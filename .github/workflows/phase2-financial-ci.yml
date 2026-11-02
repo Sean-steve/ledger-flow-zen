@@ -39,6 +39,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0001_financial_derivation_layer.sql
           psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_document_atomicity_and_permissions.sql
           psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0003_payment_integrity_and_public_share.sql
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0004_tenant_and_history_guards.sql
       - name: Exercise financial commands and permission isolation
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/phase2_financial_flows.sql
   frontend:
