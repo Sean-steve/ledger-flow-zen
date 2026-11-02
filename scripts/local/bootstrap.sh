@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# One-time, local-only Postgres bootstrap. Never touches remote/cloud databases.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+: "${FDOS_DB_PASSWORD:?Set FDOS_DB_PASSWORD from .env.local}"
+: "${FDOS_DB_PORT:=55434}"
+export FDOS_DB_PASSWORD FDOS_DB_PORT
+command -v docker >/dev/null || { echo "Install Docker first"; exit 1; }
+if ! docker compose version >/dev/null 2>&1; then echo "Docker Compose v2 required"; exit 1; fi
+docker compose -f compose.postgres.local.yml up -d --wait postgres
+sql() { docker compose -f compose.postgres.local.yml exec -T postgres psql -X -v ON_ERROR_STOP=1 -U fdos_dev -d fdos_local "$@"; }
+exists="$(echo "SELECT to_regclass('public.businesses') IS NOT NULL;" | sql -At)"
+if [[ "$exists" == "t" ]]; then
+  echo "FDOS schema already exists; leaving all financial records unchanged."
+  echo "To inspect: docker compose -f compose.postgres.local.yml exec postgres psql -U fdos_dev -d fdos_local"
+  exit 0
+fi
+# The SQL runs inside a single transaction: no half-initialized financial tables.
+{
+ echo 'BEGIN;'
+ cat tests/sql/supabase-auth-shim.sql
+ for script in drizzle/migrations/000{0,1,2,3,4,5}_*.sql; do
+   [[ -f "$script" ]] || { echo "Missing migration $script" >&2; exit 1; }
+   cat "$script"
+ done
+ cat server/local/schema.sql
+ echo 'COMMIT;'
+} | sql >/dev/null
+echo "Local FDOS PostgreSQL schema and local authentication tables ready."
