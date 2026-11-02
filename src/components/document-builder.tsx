@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { Plus, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/components/app-shell";
+import { DocumentSheet } from "@/components/document-sheet";
+import { DOCUMENT_TEMPLATES, getTemplateById, type TemplateId } from "@/lib/document-templates";
 import {
   useClients,
   useCreateDraft,
@@ -104,6 +106,10 @@ export function DocumentBuilder({
     existing?.document.legal_terms ?? business.default_legal_terms ?? "",
   );
   const [lines, setLines] = useState<Line[]>(toLines(existing?.items ?? []));
+  const [templateId, setTemplateId] = useState<TemplateId>(
+    getTemplateById(existing?.document.template_id ?? business.default_template).id,
+  );
+  const [showPreview, setShowPreview] = useState(false);
 
   const parsed = useMemo(
     () =>
@@ -123,6 +129,80 @@ export function DocumentBuilder({
 
   const client = (clients.data ?? []).find((c) => c.id === clientId) ?? null;
   const validLines = lines.filter((line) => line.description.trim() !== "");
+
+  // UI-only live preview. Saved/issued totals remain authoritative in PostgreSQL.
+  const previewItems = useMemo<DocumentItem[]>(() => validLines.map((line, index) => {
+    const quantity = Number(line.quantity) || 0;
+    const unitPrice = Number(line.unit_price) || 0;
+    const discountPct = Number(line.discount_pct) || 0;
+    const taxRate = TAX_RATE[line.tax_category];
+    const calculated = lineTotals({
+      quantity, unit_price: unitPrice, discount_pct: discountPct, tax_rate: taxRate,
+    });
+    return {
+      id: line.key,
+      document_id: existing?.document.id ?? "preview",
+      position: index + 1,
+      description: line.description,
+      unit: line.unit || null,
+      quantity,
+      unit_price: unitPrice,
+      discount_pct: discountPct,
+      tax_category: line.tax_category,
+      tax_rate: taxRate,
+      gross_amount: calculated.gross,
+      discount_amount: calculated.discount,
+      taxable_amount: calculated.taxable,
+      tax_amount: calculated.tax,
+      net_amount: calculated.net,
+      created_at: existing?.document.created_at ?? new Date().toISOString(),
+    } as DocumentItem;
+  }), [validLines, existing?.document.id, existing?.document.created_at]);
+
+  const previewDocument = useMemo<DocumentRow>(() => {
+    const taxGroups = new Map<string, { category: string; rate: number; taxable: number; tax: number }>();
+    for (const item of previewItems) {
+      const category = String(item.tax_category);
+      const current = taxGroups.get(category) ?? {
+        category, rate: Number(item.tax_rate), taxable: 0, tax: 0,
+      };
+      current.taxable += Number(item.taxable_amount);
+      current.tax += Number(item.tax_amount);
+      taxGroups.set(category, current);
+    }
+    return {
+      ...(existing?.document ?? {}),
+      business_id: businessId,
+      client_id: client?.id ?? "",
+      client_name: client?.name ?? "Select a client",
+      client_address: client?.address ?? null,
+      client_email: client?.email ?? null,
+      client_kra_pin: client?.kra_pin ?? null,
+      type,
+      status: "DRAFT",
+      doc_number: null,
+      issue_date: issueDate,
+      due_date: null,
+      valid_until: null,
+      currency,
+      exchange_rate: Number(rate) || 1,
+      template_id: templateId,
+      wht_applicable: whtOn,
+      wht_rate: (Number(whtRate) || 0) / 100,
+      wht_amount: totals.wht_amount,
+      notes: notes.trim() || null,
+      legal_terms: legal.trim() || null,
+      subtotal: totals.subtotal,
+      discount_total: totals.discount_total,
+      taxable_total: totals.taxable_total,
+      tax_total: totals.tax_total,
+      total_amount: totals.total_amount,
+      tax_breakdown: [...taxGroups.values()],
+      kra_status: "NOT_CONFIGURED",
+    } as DocumentRow;
+  }, [existing?.document, businessId, client, type, issueDate, currency, rate, templateId,
+      whtOn, whtRate, notes, legal, totals.subtotal, totals.discount_total,
+      totals.taxable_total, totals.tax_total, totals.total_amount, totals.wht_amount, previewItems]);
   const canSave = !!client && validLines.length > 0 && !create.isPending && !replace.isPending;
 
   function update(key: string, patch: Partial<Line>) {
@@ -172,6 +252,7 @@ export function DocumentBuilder({
             wht_rate: (Number(whtRate) || 0) / 100,
             notes: notes.trim() || null,
             legal_terms: legal.trim() || null,
+            template_id: templateId,
           },
           items: itemPayload(),
         });
@@ -191,7 +272,7 @@ export function DocumentBuilder({
         wht_rate: (Number(whtRate) || 0) / 100,
         notes: notes.trim() || null,
         legal_terms: legal.trim() || null,
-        template_id: business.default_template,
+        template_id: templateId,
         items: itemPayload(),
       });
       toast.success("Draft created");
@@ -256,6 +337,24 @@ export function DocumentBuilder({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Document design</Label>
+              <Select value={templateId} onValueChange={(value) => setTemplateId(value as TemplateId)}>
+                <SelectTrigger aria-label="Document template">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_TEMPLATES.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.name} · {option.category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Link to="/studio" className="inline-block text-xs text-primary hover:underline">
+                Explore all eight styles in Document Studio →
+              </Link>
             </div>
             <div className="space-y-2">
               <Label htmlFor="issue">Issue date</Label>
@@ -464,14 +563,32 @@ export function DocumentBuilder({
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-end gap-3">
+      <div className="flex flex-wrap justify-between gap-3">
+        <Button type="button" variant="outline" onClick={() => setShowPreview((value) => !value)}>
+          <Eye className="size-4" /> {showPreview ? "Hide live preview" : "Preview draft design"}
+        </Button>
+        <div className="flex flex-wrap justify-end gap-3">
         <Button variant="outline" onClick={() => navigate({ to: "/documents" })}>
           Cancel
         </Button>
         <Button disabled={!canSave} onClick={submit}>
           {create.isPending || replace.isPending ? "Saving…" : "Save draft"}
         </Button>
+        </div>
       </div>
+      {showPreview && (
+        <section className="space-y-3" aria-label="Live draft preview">
+          <div>
+            <h2 className="text-2xl">Live preview · {getTemplateById(templateId).name}</h2>
+            <p className="text-xs text-muted-foreground">
+              Working preview only. The server recalculates totals and assigns a number after save and issue.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-2 sm:p-4">
+            <DocumentSheet business={business} document={previewDocument} items={previewItems} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
