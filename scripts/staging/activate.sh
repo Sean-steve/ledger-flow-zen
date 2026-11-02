@@ -8,14 +8,22 @@ cd "$(dirname "$0")/../.."
 : "${FDOS_STAGING_PROJECT_REF:?Provide the staging project reference}"
 : "${FDOS_STAGING_MODE:?Set FDOS_STAGING_MODE=bootstrap or upgrade}"
 : "${FDOS_STAGING_APPROVAL:?Set FDOS_STAGING_APPROVAL=ACTIVATE_STAGING after reviewing preflight}"
-: "${FDOS_STAGING_BACKUP_VERIFIED:?Set FDOS_STAGING_BACKUP_VERIFIED=YES only after verifying a restore point}"
+# Upgrades can contain real data and always require a verified restore point.
+# Empty bootstrap is guarded by a live table-emptiness check in PostgreSQL.
 
 if [[ "${FDOS_STAGING_MODE}" != "bootstrap" && "${FDOS_STAGING_MODE}" != "upgrade" ]]; then
   echo "Mode must be bootstrap or upgrade" >&2; exit 1
 fi
-if [[ "${FDOS_STAGING_APPROVAL}" != "ACTIVATE_STAGING" ||
-      "${FDOS_STAGING_BACKUP_VERIFIED}" != "YES" ]]; then
-  echo "Staging approval and verified backup are both required" >&2; exit 1
+if [[ "${FDOS_STAGING_APPROVAL}" != "ACTIVATE_STAGING" ]]; then
+  echo "Explicit staging activation approval required" >&2; exit 1
+fi
+if [[ "${FDOS_STAGING_MODE}" == "upgrade" &&
+      "${FDOS_STAGING_BACKUP_VERIFIED:-}" != "YES" ]]; then
+  echo "Upgrading an existing staging schema requires a tested backup restore point" >&2; exit 1
+fi
+if [[ "${FDOS_STAGING_MODE}" == "bootstrap" &&
+      "${FDOS_STAGING_EMPTY_SCHEMA_APPROVED:-}" != "YES" ]]; then
+  echo "Bootstrapping a new staging project requires explicit empty-schema approval" >&2; exit 1
 fi
 command -v psql >/dev/null || { echo "psql required" >&2; exit 1; }
 node scripts/staging/verify-target.mjs
@@ -86,11 +94,20 @@ INSERT INTO fdos_internal.environment_binding (
   singleton, stage_id, project_ref, source_commit, environment_type
 ) VALUES(true, :'stage_id', :'project_ref', :'git_sha', 'STAGING')
 ON CONFLICT (singleton) DO NOTHING;
-SELECT CASE WHEN EXISTS (
-  SELECT 1 FROM fdos_internal.environment_binding
-  WHERE stage_id=:'stage_id' AND project_ref=:'project_ref'
-    AND environment_type='STAGING'
-) THEN 1 ELSE (1/0) END AS correct_staging_target;
+SELECT set_config('fdos.expected_stage', :'stage_id', true);
+SELECT set_config('fdos.expected_project', :'project_ref', true);
+DO $binding$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM fdos_internal.environment_binding
+    WHERE stage_id=current_setting('fdos.expected_stage')
+      AND project_ref=current_setting('fdos.expected_project')
+      AND environment_type='STAGING'
+  ) THEN
+    RAISE EXCEPTION 'This connection is bound to a different staging environment';
+  END IF;
+END;
+$binding$;
 \i scripts/staging/reconcile.sql
 COMMIT;
 SQL

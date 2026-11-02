@@ -5,7 +5,7 @@ This folder is for a **dedicated** FDOS staging database only. GitHub never stor
 The app uses **Supabase Auth, PostgREST and RLS**, not merely a PostgreSQL socket. A new database must be part of a dedicated managed Supabase project or a separately provisioned, fully self-hosted Supabase-compatible stack. Bare PostgreSQL alone is insufficient to activate authenticated browser workflows.
 
 - `verify-target.mjs` rejects the existing checked-in project ID, missing credentials, insecure remote connections, connection-pooler migrations and non-staging identifiers.
-- `activate.sh` requires explicit approval, backup/restore verification, and `bootstrap` (brand-new empty schema) or `upgrade` (verified 0000/0001 baseline). Applies 0002–0005, records a bound staging identity, and reconciles inside one transaction.
+- `activate.sh` requires explicit approval, a tested backup for upgrades (or proof of a new empty schema), and `bootstrap` (brand-new empty schema) or `upgrade` (verified 0000/0001 baseline). Applies 0002–0005, records a bound staging identity, and reconciles inside one transaction.
 - `reconcile.sql` is a privacy-safe, read-only financial audit; it fails on monetary/tenant mismatches.
 - `verify-staging.sh` runs the same checks on an already activated environment.
 - `.github/workflows/phase2_1-staging-activation.yml` is manual-only and requires GitHub environment secrets and approval controls.
@@ -18,7 +18,8 @@ The app uses **Supabase Auth, PostgREST and RLS**, not merely a PostgreSQL socke
 - Variable `FDOS_STAGING_ID`: e.g. `fdos-staging-ledger-v1`.
 - Variable `FDOS_STAGING_PROJECT_REF`: exactly the project's dedicated ref (not the existing `.env` project).
 - Input `mode`: `bootstrap` for a new empty project; `upgrade` only after baseline review.
-- Input `backup_verified`: true only after a **tested restore**; backups must live in separate encrypted storage, never CI artifacts.
+- Input `backup_verified`: true only after a **tested restore** when upgrading; backups must live in separate encrypted storage, never CI artifacts.
+- Input `empty_schema_approved`: true only for brand-new schema bootstrap; the SQL itself also refuses existing financial tables.
 - Approval: an explicit protected GitHub Environment reviewer before `activate`.
 
 Self-hosted staging additionally requires variable `FDOS_STAGING_PROVIDER=selfhosted` and exact `FDOS_STAGING_SELF_HOSTED_HOST`; TLS still required. These settings do not install GoTrue/PostgREST automatically.
