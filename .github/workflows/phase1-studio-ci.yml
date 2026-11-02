@@ -24,4 +24,4 @@ jobs:
       - name: TypeScript validation
         run: bunx tsc --noEmit
       - name: Run template registry tests
-        run: bunx vitest run src/lib/document-templates.test.ts
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
