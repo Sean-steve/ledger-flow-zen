@@ -1,0 +1,23 @@
+name: Phase 0 Source Integrity
+on:
+  push:
+    branches:
+      - 'phase0/**'
+  pull_request:
+    paths:
+      - 'reference/**'
+      - 'docs/phase-0/**'
+      - 'scripts/verify-phase0.mjs'
+      - '.github/workflows/phase0-source-integrity.yml'
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate reference against source Git blob hashes
+        run: node scripts/verify-phase0.mjs
