@@ -66,9 +66,14 @@ function ClientsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [search, setSearch] = useState("");
 
-  const balanceById = new Map(
-    (balances.data ?? []).map((b) => [b.client_id, Number(b.outstanding ?? 0)]),
-  );
+  // A client can have documents in multiple currencies; never sum them into a single figure.
+  const balanceById = new Map<string, string[]>();
+  for (const balance of balances.data ?? []) {
+    const id = balance.client_id ?? "";
+    const values = balanceById.get(id) ?? [];
+    values.push(money(balance.outstanding ?? 0, balance.currency ?? business.base_currency));
+    balanceById.set(id, values);
+  }
   const list = (clients.data ?? []).filter((c) =>
     `${c.name} ${c.email ?? ""} ${c.kra_pin ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
@@ -135,7 +140,7 @@ function ClientsPage() {
                   <div>
                     <dt>Balance</dt>
                     <dd className="tabular text-sm text-foreground">
-                      {money(balanceById.get(client.id) ?? 0, client.currency)}
+                      {balanceById.get(client.id)?.join(" · ") ?? money(0, client.currency)}
                     </dd>
                   </div>
                   <div>
