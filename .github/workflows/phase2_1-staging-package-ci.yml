@@ -1,0 +1,80 @@
+name: Phase 2.1 Staging Package Certification
+on:
+  push:
+    branches:
+      - 'phase2.1/**'
+  pull_request:
+    paths:
+      - 'scripts/staging/**'
+      - 'docs/phase-2.1/**'
+      - '.github/workflows/phase2_1-staging-package-ci.yml'
+      - 'tests/sql/**'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-bootstrap-and-reconciliation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fdos_staging_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_staging_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      FDOS_STAGING_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fdos_staging_ci
+      FDOS_STAGING_ID: fdos-staging-ci-test
+      FDOS_STAGING_PROJECT_REF: local-ci-only
+      FDOS_STAGING_ALLOW_LOCAL: 'YES'
+      FDOS_STAGING_MODE: bootstrap
+      FDOS_STAGING_APPROVAL: ACTIVATE_STAGING
+      FDOS_STAGING_EMPTY_SCHEMA_APPROVED: 'YES'
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_staging_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Bash and JavaScript staging scripts
+        run: |
+          bash -n scripts/staging/activate.sh
+          bash -n scripts/staging/verify-staging.sh
+          node --check scripts/staging/verify-target.mjs
+      - name: Initialize disposable Supabase Auth shim
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+      - name: Activate fresh empty staging schema transactionally
+        run: bash scripts/staging/activate.sh
+      - name: Verify bound project identity and internal reconciliation
+        run: bash scripts/staging/verify-staging.sh
+      - name: Check that second bootstrap correctly refuses an occupied database
+        run: |
+          if bash scripts/staging/activate.sh; then
+            echo 'SAFETY FAILURE: repeat bootstrap succeeded' >&2
+            exit 1
+          fi
+      - name: Test issuer, money, payments, credits, tenant and privacy rules without persisting fixtures
+        run: |
+          {
+            echo 'BEGIN;'
+            echo '\i tests/sql/phase2_financial_flows.sql'
+            echo '\i scripts/staging/reconcile.sql'
+            echo 'ROLLBACK;'
+          } | psql -X -v ON_ERROR_STOP=1
+      - name: Check that synthetic tests left no financial records
+        run: |
+          result="$(psql -X -tAc 'SELECT (SELECT count(*) FROM public.documents) + (SELECT count(*) FROM public.payments) + (SELECT count(*) FROM public.businesses)')"
+          test "$result" = '0'
+      - name: Verify final read-only reconciliation still passes
+        run: bash scripts/staging/verify-staging.sh
