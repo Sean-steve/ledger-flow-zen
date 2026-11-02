@@ -1,0 +1,52 @@
+name: Phase 2 Financial SQL Certification
+on:
+  push:
+    branches: [ 'phase2/**' ]
+  pull_request:
+    paths:
+      - 'drizzle/migrations/**'
+      - 'tests/sql/**'
+      - 'src/**'
+      - '.github/workflows/phase2-financial-ci.yml'
+jobs:
+  financial-pg16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: financial_ci
+        ports: [ '5432:5432' ]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d financial_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: financial_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install base schema and additive migrations
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0000_core_financial_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0001_financial_derivation_layer.sql
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0002_document_atomicity_and_permissions.sql
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0003_payment_integrity_and_public_share.sql
+      - name: Exercise financial commands and permission isolation
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/phase2_financial_flows.sql
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bunx tsc --noEmit
+      - run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
