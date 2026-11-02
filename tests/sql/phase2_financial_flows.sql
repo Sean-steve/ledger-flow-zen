@@ -172,6 +172,88 @@ END;
 $admin$;
 RESET ROLE;
 
+
+-- Currency segmentation, conversion and post-issue credit corrections.
+SELECT set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+DO $currency$
+DECLARE
+  b uuid; c uuid; usd public.documents; kes public.documents;
+  quote public.documents; converted public.documents; credit public.documents;
+  balance numeric; usd_balance numeric; kes_balance numeric;
+  payment jsonb; denied boolean;
+BEGIN
+  SELECT id INTO b FROM public.create_business('Phase2 multi-currency test','KES');
+  INSERT INTO public.clients(business_id,name,currency)
+    VALUES (b,'Multi-currency client','USD') RETURNING id INTO c;
+
+  usd := public.save_document_draft(
+    b,c,'{"type":"INVOICE","currency":"USD","exchange_rate":150}',
+    '[{"description":"USD service","quantity":1,"unit_price":100,"tax_category":"ZERO_RATED"}]',null);
+  usd:=public.finalize_document(usd.id);
+
+  kes := public.save_document_draft(
+    b,c,'{"type":"INVOICE","currency":"KES"}',
+    '[{"description":"KES service","quantity":1,"unit_price":1000,"tax_category":"ZERO_RATED"}]',null);
+  kes:=public.finalize_document(kes.id);
+
+  SELECT outstanding INTO usd_balance FROM public.client_balances
+    WHERE client_id=c AND currency='USD';
+  SELECT outstanding INTO kes_balance FROM public.client_balances
+    WHERE client_id=c AND currency='KES';
+  IF usd_balance<>100 OR kes_balance<>1000 THEN
+    RAISE EXCEPTION 'Currency segmentation incorrect: USD % KES %',usd_balance,kes_balance;
+  END IF;
+
+  denied:=false;
+  BEGIN
+    PERFORM public.record_payment_v2(jsonb_build_object(
+      'business_id',b,'client_id',c,
+      'idempotency_key','55555555-5555-4555-8555-555555555555',
+      'amount','50.00','currency','KES','channel','CASH',
+      'allocations',jsonb_build_array(jsonb_build_object('invoice_id',usd.id,'amount','50.00'))
+    ));
+  EXCEPTION WHEN OTHERS THEN denied:=true;
+  END;
+  IF NOT denied THEN RAISE EXCEPTION 'cross-currency allocation succeeded'; END IF;
+
+  payment:=public.record_payment_v2(jsonb_build_object(
+    'business_id',b,'client_id',c,
+    'idempotency_key','66666666-6666-4666-8666-666666666666',
+    'amount','140.00','currency','USD','channel','CASH','allocations','[]'::jsonb
+  ));
+  SELECT l.balance INTO balance FROM public.invoice_ledger l WHERE l.invoice_id=usd.id;
+  IF balance<>0 OR (payment->>'unallocated')::numeric<>40 THEN
+    RAISE EXCEPTION 'Unallocated USD payment mismatch: balance % unallocated %',
+      balance,payment->>'unallocated'; END IF;
+
+  quote:=public.save_document_draft(
+    b,c,'{"type":"QUOTATION","currency":"KES"}',
+    '[{"description":"Consulting quote","quantity":1,"unit_price":10,"tax_category":"ZERO_RATED"}]',null);
+  quote:=public.finalize_document(quote.id);
+  converted:=public.convert_document(quote.id,'INVOICE');
+  IF converted.type<>'INVOICE' OR converted.status<>'DRAFT' OR converted.parent_document_id<>quote.id
+    OR converted.total_amount<>10 THEN
+    RAISE EXCEPTION 'Quotation conversion failed'; END IF;
+  denied:=false;
+  BEGIN PERFORM public.convert_document(quote.id,'CREDIT_NOTE');
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'quotation accepted invalid conversion'; END IF;
+
+  credit:=public.save_document_draft(
+    b,c,jsonb_build_object('type','CREDIT_NOTE','currency','KES','parent_document_id',kes.id),
+    '[{"description":"Partial agreed discount","quantity":1,"unit_price":100,"tax_category":"ZERO_RATED"}]',null);
+  credit:=public.issue_credit_note(credit.id);
+  SELECT l.balance INTO balance FROM public.invoice_ledger l WHERE l.invoice_id=kes.id;
+  IF balance<>900 THEN RAISE EXCEPTION 'Credit note failed to adjust balance: %',balance; END IF;
+  denied:=false;
+  BEGIN PERFORM public.void_document(credit.id,'Invalid credit note');
+  EXCEPTION WHEN OTHERS THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Allocated credit note was voided without reversal'; END IF;
+
+  RAISE NOTICE 'Phase 2 USD/KES, unallocated credits, quotation conversion and credit-note accounting PASS';
+END;
+$currency$;
+
 RESET ROLE;
 SET ROLE anon;
 DO $test$
