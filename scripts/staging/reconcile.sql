@@ -6,13 +6,6 @@ DO $reconcile$
 DECLARE
   failures text[] := ARRAY[]::text[];
   bad bigint;
-  business_count bigint;
-  invoice_count bigint;
-  payment_count bigint;
-  receipt_count bigint;
-  allocation_count bigint;
-  currency_count bigint;
-  total_receivables numeric;
 BEGIN
   IF to_regclass('public.invoice_ledger') IS NULL
      OR to_regclass('public.client_balances') IS NULL
@@ -157,19 +150,7 @@ BEGIN
     failures := array_append(failures,'unsafe_financial_grants');
   END IF;
 
-  SELECT COUNT(*) INTO business_count FROM public.businesses;
-  SELECT COUNT(*) INTO invoice_count FROM public.documents WHERE type='INVOICE';
-  SELECT COUNT(*) INTO payment_count FROM public.payments;
-  SELECT COUNT(*) INTO receipt_count FROM public.receipts;
-  SELECT COUNT(*) INTO allocation_count FROM public.allocations WHERE reversed_at IS NULL;
-  SELECT COUNT(DISTINCT currency) INTO currency_count FROM public.documents;
-  SELECT COALESCE(SUM(CASE WHEN currency='KES' AND
-              status NOT IN ('VOID','CANCELLED','DRAFT') THEN balance ELSE 0 END),0)
-    INTO total_receivables FROM public.invoice_ledger;
 
-  RAISE NOTICE 'Financial staging counts (no customer identifiers): businesses %, invoices %, payments %, receipts %, active allocations %, document currencies %',
-    business_count,invoice_count,payment_count,receipt_count,allocation_count,currency_count;
-  RAISE NOTICE 'KES issued invoice receivables (KES only; not a multi-currency total): %',total_receivables;
 
   IF COALESCE(array_length(failures,1),0)>0 THEN
     RAISE EXCEPTION 'Financial reconciliation failed: %',array_to_string(failures,', ');
