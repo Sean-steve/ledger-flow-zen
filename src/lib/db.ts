@@ -262,42 +262,28 @@ export function useCreateDraft(businessId: string | null) {
       items: Array<Omit<Tables["document_items"]["Insert"], "document_id">>;
     }) => {
       if (!businessId) throw new Error("No business selected");
-      const document = unwrap(
-        await supabase
-          .from("documents")
-          .insert({
-            business_id: businessId,
-            client_id: input.client.id,
-            type: input.type,
-            client_name: input.client.name,
-            client_email: input.client.email,
-            client_kra_pin: input.client.kra_pin,
-            client_address: input.client.address,
-            currency: input.currency,
-            exchange_rate: input.exchange_rate,
-            wht_applicable: input.wht_applicable,
-            wht_rate: input.wht_rate,
-            issue_date: input.issue_date,
-            payment_terms_days: input.payment_terms_days,
-            notes: input.notes,
-            legal_terms: input.legal_terms,
-            template_id: input.template_id,
-            parent_document_id: input.parent_document_id ?? null,
-          })
-          .select()
-          .single(),
-      );
-      if (input.items.length) {
-        unwrap(
-          await supabase
-            .from("document_items")
-            .insert(input.items.map((item) => ({ ...item, document_id: document.id })))
-            .select("id"),
-        );
-      }
-      const { error } = await supabase.rpc("recalculate_document", { _document_id: document.id });
-      if (error) throw new Error(error.message);
-      return document;
+      return unwrap(await supabase.rpc("save_document_draft", {
+        _business_id: businessId,
+        _client_id: input.client.id,
+        _payload: {
+          type: input.type,
+          issue_date: input.issue_date,
+          payment_terms_days: input.payment_terms_days,
+          currency: input.currency,
+          exchange_rate: input.exchange_rate,
+          wht_applicable: input.wht_applicable,
+          wht_rate: input.wht_rate,
+          notes: input.notes,
+          legal_terms: input.legal_terms,
+          template_id: input.template_id,
+          parent_document_id: input.parent_document_id ?? null,
+        },
+        _items: input.items.map(item => ({
+          position: item.position, description: item.description, unit: item.unit,
+          quantity: item.quantity, unit_price: item.unit_price,
+          discount_pct: item.discount_pct, tax_category: item.tax_category,
+        })),
+      }));
     },
     onSuccess: () => qc.invalidateQueries(),
   });
@@ -311,27 +297,28 @@ export function useReplaceDraftItems() {
       patch: Tables["documents"]["Update"];
       items: Array<Omit<Tables["document_items"]["Insert"], "document_id">>;
     }) => {
-      unwrap(
-        await supabase.from("documents").update(input.patch).eq("id", input.documentId).select().single(),
-      );
-      const { error: delError } = await supabase
-        .from("document_items")
-        .delete()
-        .eq("document_id", input.documentId);
-      if (delError) throw new Error(delError.message);
-      if (input.items.length) {
-        unwrap(
-          await supabase
-            .from("document_items")
-            .insert(input.items.map((item) => ({ ...item, document_id: input.documentId })))
-            .select("id"),
-        );
+      if (!input.patch.business_id || !input.patch.client_id) {
+        throw new Error("Business and client are required to update the draft");
       }
-      const { error } = await supabase.rpc("recalculate_document", {
+      return unwrap(await supabase.rpc("save_document_draft", {
+        _business_id: input.patch.business_id,
+        _client_id: input.patch.client_id,
         _document_id: input.documentId,
-      });
-      if (error) throw new Error(error.message);
-      return true;
+        _payload: {
+          type: input.patch.type, issue_date: input.patch.issue_date,
+          payment_terms_days: input.patch.payment_terms_days,
+          currency: input.patch.currency, exchange_rate: input.patch.exchange_rate,
+          wht_applicable: input.patch.wht_applicable, wht_rate: input.patch.wht_rate,
+          notes: input.patch.notes, legal_terms: input.patch.legal_terms,
+          template_id: input.patch.template_id,
+          parent_document_id: input.patch.parent_document_id ?? null,
+        },
+        _items: input.items.map(item => ({
+          position: item.position, description: item.description, unit: item.unit,
+          quantity: item.quantity, unit_price: item.unit_price,
+          discount_pct: item.discount_pct, tax_category: item.tax_category,
+        })),
+      }));
     },
     onSuccess: () => qc.invalidateQueries(),
   });
@@ -369,26 +356,15 @@ export function useDocumentActions() {
     }),
     setStatus: useMutation({
       mutationFn: async (input: { id: string; status: DocumentRow["status"] }) =>
-        unwrap(
-          await supabase
-            .from("documents")
-            .update({ status: input.status })
-            .eq("id", input.id)
-            .select()
-            .single(),
-        ),
+        unwrap(await supabase.rpc("set_document_status", {
+          _document_id: input.id,
+          _status: input.status,
+        })),
       ...done,
     }),
     markSent: useMutation({
       mutationFn: async (id: string) =>
-        unwrap(
-          await supabase
-            .from("documents")
-            .update({ sent_at: new Date().toISOString() })
-            .eq("id", id)
-            .select()
-            .single(),
-        ),
+        unwrap(await supabase.rpc("mark_document_sent", { _document_id: id })),
       ...done,
     }),
   };
@@ -441,24 +417,30 @@ export function useRecordPayment(businessId: string | null) {
       payer_phone?: string | null;
       notes?: string | null;
       allocations?: Array<{ invoice_id: string; amount: number }>;
+      idempotency_key: string;
     }) => {
       if (!businessId) throw new Error("No business selected");
-      return unwrap(
-        await supabase.rpc("record_payment", {
-          _business_id: businessId,
-          _client_id: input.client_id,
-          _amount: input.amount,
-          _channel: input.channel,
-          _currency: input.currency,
-          _payment_date: new Date(input.payment_date).toISOString(),
-          ...(input.reference ? { _reference: input.reference } : {}),
-          ...(input.channel_txn_id ? { _channel_txn_id: input.channel_txn_id } : {}),
-          ...(input.payer_name ? { _payer_name: input.payer_name } : {}),
-          ...(input.payer_phone ? { _payer_phone: input.payer_phone } : {}),
-          ...(input.notes ? { _notes: input.notes } : {}),
-          _allocations: input.allocations ?? [],
-        }),
-      );
+      if (!Number.isFinite(input.amount) || input.amount <= 0 ||
+          Math.round(input.amount * 100) !== input.amount * 100) {
+        throw new Error("Use a positive amount with at most two decimal places");
+      }
+      return unwrap(await supabase.rpc("record_payment_v2", {
+        _request: {
+          business_id: businessId,
+          client_id: input.client_id,
+          amount: input.amount,
+          channel: input.channel,
+          currency: input.currency,
+          payment_date: new Date(input.payment_date).toISOString(),
+          reference: input.reference ?? null,
+          channel_txn_id: input.channel_txn_id ?? null,
+          payer_name: input.payer_name ?? null,
+          payer_phone: input.payer_phone ?? null,
+          notes: input.notes ?? null,
+          allocations: input.allocations ?? [],
+          idempotency_key: input.idempotency_key,
+        },
+      }));
     },
     onSuccess: () => qc.invalidateQueries(),
   });
