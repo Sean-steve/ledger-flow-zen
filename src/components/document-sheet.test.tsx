@@ -30,7 +30,7 @@ const invoice = {
   wht_applicable: false,
   kra_status: "NOT_CONFIGURED",
   template_id: "executive-atelier",
-} as DocumentRow;
+} as unknown as DocumentRow;
 
 const items = [{
   id: "fixture-item",
