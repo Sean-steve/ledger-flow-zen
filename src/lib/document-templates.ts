@@ -140,7 +140,7 @@ export const DOCUMENT_TEMPLATES: DocumentTemplateConfig[] = [
 ];
 
 export function getTemplateById(id: string | null | undefined): DocumentTemplateConfig {
-  return DOCUMENT_TEMPLATES.find((t) => t.id === id) || DOCUMENT_TEMPLATES[0];
+  return DOCUMENT_TEMPLATES.find((t) => t.id === id) ?? DOCUMENT_TEMPLATES[0]!;
 }
 
 export function templateStyle(template: DocumentTemplateConfig): CSSProperties {
