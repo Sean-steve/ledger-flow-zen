@@ -1,0 +1,6 @@
+{
+  "name": "Financial Document OS",
+  "description": "Production-grade Financial Document Operating System for invoices, receipts, quotations, payments, multi-currency treasury, and compliance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
