@@ -9,7 +9,7 @@ on:
         description: 'preflight, activate or reconcile'
         type: choice
         required: true
-        options: [preflight, activate, reconcile]
+        options: [preflight, activate, reconcile, api-check]
       mode:
         description: 'bootstrap for empty new project; upgrade for reviewed 0000/0001 baseline'
         type: choice
@@ -45,6 +45,9 @@ jobs:
       FDOS_STAGING_PROVIDER: ${{ vars.FDOS_STAGING_PROVIDER }}
       FDOS_STAGING_SELF_HOSTED_HOST: ${{ vars.FDOS_STAGING_SELF_HOSTED_HOST }}
       FDOS_STAGING_MODE: ${{ inputs.mode }}
+      FDOS_STAGING_API_URL: ${{ vars.FDOS_STAGING_API_URL }}
+      FDOS_STAGING_PUBLISHABLE_KEY: ${{ secrets.FDOS_STAGING_PUBLISHABLE_KEY }}
+      FDOS_STAGING_SELF_HOSTED_API_HOST: ${{ vars.FDOS_STAGING_SELF_HOSTED_API_HOST }}
       FDOS_STAGING_BACKUP_VERIFIED: ${{ inputs.backup_verified && 'YES' || 'NO' }}
       FDOS_STAGING_EMPTY_SCHEMA_APPROVED: ${{ inputs.empty_schema_approved && 'YES' || 'NO' }}
       FDOS_STAGING_APPROVAL: ACTIVATE_STAGING
@@ -77,3 +80,6 @@ jobs:
       - name: Reconcile an already activated staging DB, read only
         if: inputs.operation == 'reconcile'
         run: bash scripts/staging/verify-staging.sh
+      - name: Verify real staging Auth/PostgREST reachability and anonymous RLS
+        if: inputs.operation == 'api-check'
+        run: node scripts/staging/verify-api.mjs
