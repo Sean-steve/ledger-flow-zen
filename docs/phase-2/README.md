@@ -47,3 +47,8 @@ Working branch: `phase2/postgresql-financial-correctness`, stacked on Phase 1.
 - Manual payment source attestation, provider webhooks, settlement/refunds and fiscal eTIMS certification.
 - Migration system harmonisation, including the existing Drizzle journal.
 - CI is evidence for code and ephemeral DB, not a production release certificate.
+
+## Latest automated evidence (2026-11-02)
+- GitHub Actions Phase 2 SQL Certification at commit `7ca067bca9298287c8b5a664d7c07e43f1efd168`: **PASS** (transactional runner on ephemeral PostgreSQL 16, role/tenant/payment and currency lifecycle tests).
+- Frontend production build, strict TypeScript, and **13/13** retained document/template tests: **PASS**.
+- This is not evidence of a provisioned live database, external provider certification or migration compatibility with a currently populated instance.

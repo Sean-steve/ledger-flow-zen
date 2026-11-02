@@ -1,6 +1,6 @@
 -- Phase 2 / migration 0002: atomic drafts and authoritative document lifecycle.
 -- Apply AFTER 0000 and 0001. Do not rewrite already-deployed migrations.
--- Deploy only after checking existing data against docs/phase-2/PREFLIGHT.md.
+-- Deploy only after checking existing data against docs/phase-2/README.md.
 
 -- Lock down table writes; all new mutations use narrow SECURITY DEFINER commands.
 -- Server functions are individually permission-checked and audited.
