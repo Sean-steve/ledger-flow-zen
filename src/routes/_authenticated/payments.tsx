@@ -416,7 +416,7 @@ function RecordPaymentDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!clientId || amountValue <= 0 || !Number.isFinite(amountValue) ||
-                Math.round(amountValue * 100) !== amountValue * 100 || record.isPending}>
+                Math.round(amountValue * 100) / 100 !== amountValue || record.isPending}>
               {record.isPending ? "Recording…" : "Record payment"}
             </Button>
           </DialogFooter>

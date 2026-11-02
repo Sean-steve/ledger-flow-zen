@@ -251,6 +251,7 @@ export function DocumentBuilder({
       if (existing) {
         await replace.mutateAsync({
           documentId: existing.document.id,
+          businessId,
           patch: {
             client_id: client.id,
             client_name: client.name,
@@ -267,6 +268,7 @@ export function DocumentBuilder({
             notes: notes.trim() || null,
             legal_terms: legal.trim() || null,
             template_id: templateId,
+            parent_document_id: existing.document.parent_document_id,
           },
           items: itemPayload(),
         });

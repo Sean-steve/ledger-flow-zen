@@ -294,14 +294,15 @@ export function useReplaceDraftItems() {
   return useMutation({
     mutationFn: async (input: {
       documentId: string;
+      businessId: string;
       patch: Tables["documents"]["Update"];
       items: Array<Omit<Tables["document_items"]["Insert"], "document_id">>;
     }) => {
-      if (!input.patch.business_id || !input.patch.client_id) {
+      if (!input.businessId || !input.patch.client_id) {
         throw new Error("Business and client are required to update the draft");
       }
       return unwrap(await supabase.rpc("save_document_draft", {
-        _business_id: input.patch.business_id,
+        _business_id: input.businessId,
         _client_id: input.patch.client_id,
         _document_id: input.documentId,
         _payload: {
@@ -421,14 +422,14 @@ export function useRecordPayment(businessId: string | null) {
     }) => {
       if (!businessId) throw new Error("No business selected");
       if (!Number.isFinite(input.amount) || input.amount <= 0 ||
-          Math.round(input.amount * 100) !== input.amount * 100) {
+          Math.round(input.amount * 100) / 100 !== input.amount) {
         throw new Error("Use a positive amount with at most two decimal places");
       }
       return unwrap(await supabase.rpc("record_payment_v2", {
         _request: {
           business_id: businessId,
           client_id: input.client_id,
-          amount: input.amount,
+          amount: input.amount.toFixed(2),
           channel: input.channel,
           currency: input.currency,
           payment_date: new Date(input.payment_date).toISOString(),
