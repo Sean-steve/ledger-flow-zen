@@ -52,10 +52,17 @@ jobs:
           bash -n scripts/staging/activate.sh
           bash -n scripts/staging/verify-staging.sh
           node --check scripts/staging/verify-target.mjs
+          node --check scripts/staging/verify-api.mjs
       - name: Initialize disposable Supabase Auth shim
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
       - name: Activate fresh empty staging schema transactionally
         run: bash scripts/staging/activate.sh
+      - name: Reject a different project identity even when its database is reachable
+        run: |
+          if FDOS_STAGING_ID=fdos-staging-impostor bash scripts/staging/verify-staging.sh; then
+            echo 'SAFETY FAILURE: a different staging identity was accepted' >&2
+            exit 1
+          fi
       - name: Verify bound project identity and internal reconciliation
         run: bash scripts/staging/verify-staging.sh
       - name: Check that second bootstrap correctly refuses an occupied database
