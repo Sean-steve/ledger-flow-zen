@@ -1,6 +1,7 @@
 import type { Business, DocumentItem, DocumentRow, InvoiceLedger } from "@/lib/db";
 import { DOC_TYPE_LABEL, money, num, shortDate, TAX_LABEL } from "@/lib/format";
 import type { DocType, TaxCategory } from "@/lib/format";
+import { getTemplateById, templateStyle } from "@/lib/document-templates";
 
 /**
  * The single rendering system. Live preview, print, PDF (via print) and
@@ -12,12 +13,15 @@ export function DocumentSheet({
   document,
   items,
   ledger,
+  templateId,
 }: {
   business: Business;
   document: DocumentRow;
   items: DocumentItem[];
   ledger?: InvoiceLedger | null;
+  templateId?: string | null;
 }) {
+  const template = getTemplateById(templateId ?? document.template_id);
   const currency = document.currency;
   const isInvoice = document.type === "INVOICE";
   const paid = Number(ledger?.paid_amount ?? 0) + Number(ledger?.credited_amount ?? 0);
@@ -27,8 +31,8 @@ export function DocumentSheet({
     : [];
 
   return (
-    <article className="doc-sheet" data-doc-sheet>
-      <header className="flex items-start justify-between gap-8 border-b border-[color:var(--paper-border)] pb-6">
+    <article className="doc-sheet" data-doc-sheet data-template={template.id} style={templateStyle(template)}>
+      <header className="doc-sheet-main-header flex items-start justify-between gap-8 border-b border-[color:var(--paper-border)] pb-6">
         <div>
           <h1 className="font-display text-3xl leading-tight">{business.name}</h1>
           {business.trading_name ? (
@@ -261,7 +265,7 @@ export function ReceiptSheet({
   payment,
 }: {
   business: Business;
-  receipt: { receipt_number: string; created_at: string; received_by: string | null; notes: string | null; voided_at: string | null };
+  receipt: { receipt_number: string; created_at: string; received_by: string | null; notes: string | null; voided_at: string | null; template_id?: string | null };
   payment: {
     amount: number | string;
     currency: string;
@@ -272,9 +276,10 @@ export function ReceiptSheet({
     payer_name: string | null;
   };
 }) {
+  const template = getTemplateById(receipt.template_id ?? business.default_template);
   return (
-    <article className="doc-sheet" data-doc-sheet>
-      <header className="flex items-start justify-between border-b border-[color:var(--paper-border)] pb-6">
+    <article className="doc-sheet" data-doc-sheet data-template={template.id} style={templateStyle(template)}>
+      <header className="doc-sheet-main-header flex items-start justify-between border-b border-[color:var(--paper-border)] pb-6">
         <div>
           <h1 className="font-display text-3xl">{business.name}</h1>
           <div className="mt-2 space-y-0.5 text-[11px] text-[color:var(--paper-muted)]">

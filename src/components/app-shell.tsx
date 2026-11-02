@@ -6,6 +6,7 @@ import {
   FileText,
   LayoutDashboard,
   Menu,
+  Palette,
   Receipt,
   Settings,
   ShieldCheck,
@@ -48,6 +49,7 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/documents", label: "Documents", icon: FileText },
+  { to: "/studio", label: "Document Studio", icon: Palette },
   { to: "/payments", label: "Payments", icon: Wallet },
   { to: "/receipts", label: "Receipts", icon: Receipt },
   { to: "/reports", label: "Reports", icon: BookOpenCheck },
@@ -137,7 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebarBody = (
     <div className="flex h-full flex-col gap-6 p-4">
       <div>
-        <p className="text-[10px] uppercase tracking-[0.28em] text-primary">Document OS</p>
+        <p className="text-[10px] uppercase tracking-[0.28em] text-primary">Financial Document OS</p>
         <div className="mt-3">{switcher}</div>
       </div>
       {nav}
