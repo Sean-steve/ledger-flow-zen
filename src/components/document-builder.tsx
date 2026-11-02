@@ -113,7 +113,7 @@ export function DocumentBuilder({
 
   const parsed = useMemo(
     () =>
-      lines.map((line) => ({
+      lines.filter((line) => line.description.trim() !== "").map((line) => ({
         quantity: Number(line.quantity) || 0,
         unit_price: Number(line.unit_price) || 0,
         discount_pct: Number(line.discount_pct) || 0,
@@ -203,7 +203,21 @@ export function DocumentBuilder({
   }, [existing?.document, businessId, client, type, issueDate, currency, rate, templateId,
       whtOn, whtRate, notes, legal, totals.subtotal, totals.discount_total,
       totals.taxable_total, totals.tax_total, totals.total_amount, totals.wht_amount, previewItems]);
-  const canSave = !!client && validLines.length > 0 && !create.isPending && !replace.isPending;
+  const validMoneyInputs = validLines.every((line) => {
+    const quantity = Number(line.quantity);
+    const price = Number(line.unit_price);
+    const discount = Number(line.discount_pct);
+    return Number.isFinite(quantity) && quantity > 0 &&
+      Number.isFinite(price) && price >= 0 &&
+      Number.isFinite(discount) && discount >= 0 && discount <= 100;
+  });
+  const termsValid = Number.isInteger(Number(terms)) && Number(terms) >= 0;
+  const rateValid = currency === business.base_currency ||
+    (Number.isFinite(Number(rate)) && Number(rate) > 0);
+  const withholdingValid = !whtOn ||
+    (Number.isFinite(Number(whtRate)) && Number(whtRate) >= 0 && Number(whtRate) <= 100);
+  const canSave = !!client && validLines.length > 0 && validMoneyInputs &&
+    termsValid && rateValid && withholdingValid && !create.isPending && !replace.isPending;
 
   function update(key: string, patch: Partial<Line>) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
@@ -461,6 +475,16 @@ export function DocumentBuilder({
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!validMoneyInputs && (
+            <p role="alert" className="text-xs text-destructive">
+              Each described line requires a positive quantity, non-negative unit price and discount from 0 to 100%.
+            </p>
+          )}
+          {!termsValid || !rateValid || !withholdingValid ? (
+            <p role="alert" className="text-xs text-destructive">
+              Check payment terms, exchange rate and withholding percentage before saving.
+            </p>
+          ) : null}
           {lines.map((line, index) => {
             const t = lineTotals({
               quantity: Number(line.quantity) || 0,
