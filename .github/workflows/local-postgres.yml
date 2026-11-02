@@ -1,0 +1,69 @@
+name: Local PostgreSQL — Full Application Integration
+on:
+  push:
+    branches: ['phase2.1/local-postgres-dev']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'scripts/local/**'
+      - 'src/**'
+      - 'compose.postgres.local.yml'
+      - '.github/workflows/local-postgres.yml'
+      - 'tests/local/**'
+permissions:
+  contents: read
+jobs:
+  postgres-local:
+    runs-on: ubuntu-latest
+    services:
+      pg:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fdos_local_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_local_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_local_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_local_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check runtime scripts
+        run: |
+          bash -n scripts/local/bootstrap.sh
+          bash -n scripts/local/run-api.sh
+          node --check server/local/api.mjs
+          node --check server/local/auth.mjs
+          node --check server/local/database.mjs
+          node --check server/local/domain.mjs
+      - name: Prepare real PostgreSQL schema with role and local-user shim
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install locked application dependencies
+        run: bun install --frozen-lockfile
+      - name: Build React frontend (no cloud credentials required)
+        run: bun run build
+      - name: Strict TypeScript validation
+        run: bunx tsc --noEmit
+      - name: Existing document rendering tests
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Exercise local login, RLS, documents and payments over HTTP
+        run: node --test tests/local/api.test.mjs
