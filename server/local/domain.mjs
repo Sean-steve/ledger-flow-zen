@@ -140,7 +140,7 @@ export async function runRpc(userId, request) {
   const definition = functions[name];
   const unexpected = Object.keys(args).filter(key => !definition.some(([field]) => field === key));
   if (unexpected.length) throw new Error("Unexpected command input");
-  const casts = definition.map(([field,type],i)=>`${i+1}::${type}`).join(",");
+  const casts = definition.map(([,type],i) => "$" + (i+1) + "::" + type).join(",");
   return withUser(userId, async tx => {
     // postgres.js json() preserves objects/arrays as JSONB instead of
     // accidentally casting a serialized string into a JSON scalar.
