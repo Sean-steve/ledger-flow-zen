@@ -39,3 +39,9 @@ This is a **development-only authentication/API layer**, not a production identi
 `src/integrations/supabase/types.ts` is retained as a TypeScript shape reference, not used to connect to Supabase Cloud. The source Stage 4 reference remains preserved.
 
 Never expose the development API/port publicly or use it for real customers without production security review.
+
+## Verification
+
+GitHub Actions `Local PostgreSQL — Full Application Integration` at commit `07b99f91ff4bf2737e35e74b434d62456756d3ed` passed on PostgreSQL 16 with **7/7 API lifecycle tests**. Production frontend build, strict TypeScript and the existing document renderer tests passed too.
+
+These results validate a disposable CI database. Your own Ubuntu Docker/database instance still needs to be started with the commands above; no files or data from your laptop were accessed.
