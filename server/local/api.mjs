@@ -69,6 +69,7 @@ export function createLocalApiServer() {
       const safe=error instanceof Error?error.message:"Request failed";
       // No database detail, stack trace or financial arguments in logs.
       const known=safe.startsWith("Invalid")||safe.startsWith("Not ")||
+        safe.startsWith("Unsupported")||safe.startsWith("Business ")||
         safe.startsWith("Only ")||safe.startsWith("Expected")||
         safe.startsWith("Missing")||safe.startsWith("Incorrect")||
         safe.startsWith("Unknown")||safe.startsWith("Unauthorised")||
