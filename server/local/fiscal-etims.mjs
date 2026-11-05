@@ -203,14 +203,19 @@ async function fiscalSnapshot(userId,businessId,documentId,mode) {
   });
 }
 async function findExisting(businessId,requestKey,documentId,mode) {
-  const rows=await database`SELECT * FROM public.fiscal_submissions
+  // Resolve the request key first. A key may never be reused for another
+  // document, even when that original document also has an existing preview.
+  const key=await database`SELECT * FROM public.fiscal_submissions
+    WHERE business_id=${businessId}::uuid AND request_key=${requestKey}::uuid`;
+  if(key.length) {
+    if(key[0].document_id!==documentId||key[0].mode!==mode)
+      throw reject("Idempotency key already belongs to another fiscal request",409);
+    return safeEntry(key[0],true);
+  }
+  const document=await database`SELECT * FROM public.fiscal_submissions
     WHERE business_id=${businessId}::uuid AND
-      (request_key=${requestKey}::uuid OR
-       (document_id=${documentId}::uuid AND mode=${mode})) LIMIT 1`;
-  if(!rows.length)return null;
-  if(rows[0].document_id!==documentId||rows[0].mode!==mode)
-    throw reject("Idempotency key already belongs to another fiscal request",409);
-  return safeEntry(rows[0],true);
+      document_id=${documentId}::uuid AND mode=${mode}`;
+  return document.length?safeEntry(document[0],true):null;
 }
 export async function prepareFiscalSubmission(userId,input,options={}) {
   const businessId=validUuid(input?.businessId,"business ID");

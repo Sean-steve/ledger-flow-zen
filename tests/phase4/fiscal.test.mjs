@@ -66,7 +66,7 @@ after(async()=>{
 });
 test("preview mode is fail closed; OSCU never claims production eTIMS",async()=>{
  assert.equal(fiscalRuntime({}).mode,"PREVIEW");
- assert.equal(fiscalRuntime({FDOS_ETIMS_MODE:"production"}).productionEnabled,undefined);
+ assert.throws(()=>fiscalRuntime({FDOS_ETIMS_MODE:"production"}),/production is disabled/);
 });
 test("validates KRA PIN and the sandbox bridge cannot connect over public HTTP",async()=>{
  assert.equal(validateKraPin("p123456789z"),"P123456789Z");
