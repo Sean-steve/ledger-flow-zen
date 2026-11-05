@@ -168,6 +168,63 @@ test("live WhatsApp send enforces opt-in; retries return same outbox",async()=>{
    WHERE o.id=${row.id}::uuid`;
  assert.equal(share[0].active,true);
 });
+test("receipts can be previewed, but a reversed receipt cannot be sent",async()=>{
+ const recorded=await ok("/api/local/rpc",{name:"record_payment_v2",args:{_request:{
+  business_id:businessId,client_id:clientId,idempotency_key:randomUUID(),
+  amount:"400.00",currency:"KES",channel:"BANK_TRANSFER",
+  allocations:[{invoice_id:documentId,amount:"400.00"}],
+ }}});
+ const receiptId=recorded.receipt.id;
+ const preview=await comm("send",{
+  businessId,receiptId,channel:"EMAIL",requestKey:randomUUID(),
+ });
+ assert.equal(preview.status,"PREVIEW");
+ assert.match(preview.subject,/RECEIPT/);
+ const revoked=await ok("/api/local/rpc",{name:"reverse_payment",args:{
+  _payment_id:recorded.payment.id,_reason:"Phase 3 receipt safety validation",
+ }});
+ assert.ok(revoked);
+ const invalid=await post("/api/local/communications/send",{
+  businessId,receiptId,channel:"EMAIL",requestKey:randomUUID(),
+ });
+ assert.equal(invalid.status,400);
+ assert.match(invalid.data.error.message,/Voided receipts/);
+});
+test("live email returns provider-accepted state; rejected/unknown outcomes are never auto-retried",async()=>{
+ const env={
+  FDOS_COMM_MODE:"live",FDOS_PUBLIC_APP_URL:"https://fdos.example",
+  RESEND_API_KEY:"test-resend-token",
+  FDOS_EMAIL_FROM:"FDOS <invoices@example.com>",
+ };
+ let sends=0;
+ const payload={businessId,documentId,channel:"EMAIL",requestKey:randomUUID()};
+ const accepted=await sendCommunication(userId,payload,{env,transport:async()=>{
+  sends++;return {ok:true,status:200,json:async()=>({id:"resend-accepted"})};
+ }});
+ assert.equal(accepted.status,"ACCEPTED");
+ assert.equal(accepted.provider_id,"resend-accepted");
+ const repeat=await sendCommunication(userId,payload,{env,transport:async()=>{
+  sends++;throw Error("Unexpected duplicate network call");
+ }});
+ assert.equal(repeat.duplicate,true);
+ assert.equal(sends,1);
+ const rejected=await sendCommunication(userId,{
+  ...payload,requestKey:randomUUID(),
+ },{env,transport:async()=>({ok:false,status:422})});
+ assert.equal(rejected.status,"FAILED");
+ assert.equal(rejected.provider_error_code,"PROVIDER_REJECTED");
+ const unknownPayload={...payload,requestKey:randomUUID()};
+ let unknownCount=0;
+ const uncertain=await sendCommunication(userId,unknownPayload,{env,transport:async()=>{
+  unknownCount++;throw Error("connection dropped after send");
+ }});
+ assert.equal(uncertain.status,"UNKNOWN");
+ const repeatUnknown=await sendCommunication(userId,unknownPayload,{env,transport:async()=>{
+  unknownCount++;throw Error("Should not retry");
+ }});
+ assert.equal(repeatUnknown.duplicate,true);
+ assert.equal(unknownCount,1);
+});
 test("email opt-out blocks live delivery and cross tenant outbox reads are RLS restricted",async()=>{
  await comm("preferences/update",{businessId,clientId,channel:"EMAIL",optedIn:false});
  const blocked=await post("/api/local/communications/send",{
