@@ -241,10 +241,10 @@ export function DocumentSheet({
         </div>
       </footer>
 
-      <p className="mt-4 text-center text-[9px] uppercase tracking-[0.2em] text-[color:var(--paper-muted)]">
-        {document.kra_status === "TRANSMITTED"
-          ? `eTIMS control code ${document.kra_control_code ?? ""}`
-          : "Not transmitted to KRA eTIMS"}
+      <p className="mt-4 border border-[color:var(--paper-border)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.13em] text-[color:var(--paper-foreground)]">
+        {["INVOICE","CREDIT_NOTE","DEBIT_NOTE"].includes(document.type)
+          ? "NOT KRA FISCALIZED — THIS IS NOT AN OFFICIAL KRA eTIMS TAX RECEIPT"
+          : "NOT A KRA FISCAL TAX RECEIPT — DOCUMENT FOR INFORMATION"}
       </p>
     </article>
   );
