@@ -11,8 +11,8 @@ docker compose -f compose.postgres.local.yml up -d --wait postgres
 sql() { docker compose -f compose.postgres.local.yml exec -T postgres psql -X -v ON_ERROR_STOP=1 -U fdos_dev -d fdos_local "$@"; }
 exists="$(echo "SELECT to_regclass('public.businesses') IS NOT NULL;" | sql -At)"
 if [[ "$exists" == "t" ]]; then
-  echo "FDOS schema already exists; leaving all financial records unchanged."
-  echo "To inspect: docker compose -f compose.postgres.local.yml exec postgres psql -U fdos_dev -d fdos_local"
+  echo "FDOS financial schema already exists; preserving all financial records."
+  bash scripts/local/migrate-phase3.sh
   exit 0
 fi
 # The SQL runs inside a single transaction: no half-initialized financial tables.
@@ -24,6 +24,7 @@ fi
    cat "$script"
  done
  cat server/local/schema.sql
+ cat drizzle/migrations/0006_communications.sql
  echo 'COMMIT;'
 } | sql >/dev/null
 echo "Local FDOS PostgreSQL schema and local authentication tables ready."
