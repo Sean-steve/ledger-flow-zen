@@ -1,5 +1,8 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 4 KRA eTIMS (local foundation):** A fiscal center, validated invoice preview, OSCU sandbox adapter boundary and evidence ledger are available on `phase4/etims-fiscal-integration`. **No production KRA transmission or certified invoice** is enabled. See [Phase 4 instructions](docs/phase-4/README.md).
+
+
 > **Phase 3 communication engine:** email/WhatsApp preview, outbox, consent and live-provider adapters are available on `phase3/communications-engine`. Start with **preview mode**. See [Phase 3 setup and activation requirements](docs/phase-3/README.md) before enabling live sending.
 
 
