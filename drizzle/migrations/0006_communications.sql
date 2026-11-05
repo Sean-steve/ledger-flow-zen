@@ -74,3 +74,23 @@ CREATE POLICY "outbox member read"
   USING (public.has_business_access(business_id));
 -- All writes to the outbox are done by the trusted local API after it verifies
 -- business role, recipient, lifecycle state, and consent. No direct app SQL writes.
+
+-- Earlier financial hardening revokes direct audit INSERTs. This narrow,
+-- authenticated function preserves the immutable trail without broad grants.
+CREATE OR REPLACE FUNCTION public.record_comm_pref_audit(
+  _business_id uuid,_client_id uuid,_channel text,_allowed boolean
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT public.can_write_business(_business_id) THEN
+    RAISE EXCEPTION 'Not permitted to record a communication preference';
+  END IF;
+  INSERT INTO public.audit_logs
+    (business_id,actor_id,action,entity_type,entity_id,details)
+  VALUES(_business_id,auth.uid(),'COMMUNICATION_PREFERENCE_UPDATED','CLIENT',
+    _client_id,jsonb_build_object('channel',_channel,'allowed',_allowed));
+END;
+$$;
+REVOKE ALL ON FUNCTION public.record_comm_pref_audit(uuid,uuid,text,boolean)
+  FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.record_comm_pref_audit(uuid,uuid,text,boolean)
+  TO authenticated;

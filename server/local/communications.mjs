@@ -126,9 +126,9 @@ export async function updateCommunicationPreferences(userId,input) {
           email_opted_out_at=EXCLUDED.email_opted_out_at,
           updated_by=EXCLUDED.updated_by,updated_at=now()`;
     }
-    await tx`INSERT INTO public.audit_logs(business_id,actor_id,action,entity_type,entity_id,details)
-      VALUES(${businessId}::uuid,${userId}::uuid,'COMMUNICATION_PREFERENCE_UPDATED','CLIENT',${clientId}::uuid,
-        jsonb_build_object('channel',${channel}::text,'allowed',${input.optedIn}::boolean))`;
+    await tx`SELECT public.record_comm_pref_audit(
+      ${businessId}::uuid,${clientId}::uuid,${channel}::text,${input.optedIn}::boolean
+    )`;
   });
   return getCommunicationPreferences(userId,{businessId,clientId});
 }
