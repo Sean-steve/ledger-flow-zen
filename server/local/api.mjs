@@ -2,6 +2,10 @@ import { createServer } from "node:http";
 import { database } from "./database.mjs";
 import { currentUser, handleAuth } from "./auth.mjs";
 import { queryTable, runRpc } from "./domain.mjs";
+import {
+  communicationConfig,listCommunicationOutbox,getCommunicationPreferences,
+  updateCommunicationPreferences,sendCommunication,
+} from "./communications.mjs";
 
 const HOST=process.env.FDOS_API_HOST??"127.0.0.1";
 const PORT=Number(process.env.FDOS_API_PORT??5012);
@@ -54,6 +58,16 @@ export function createLocalApiServer() {
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path.startsWith("/api/local/communications/")) {
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/communications/".length);
+        if(action==="config")return json(res,200,{data:communicationConfig(),error:null});
+        if(action==="outbox")return json(res,200,{data:await listCommunicationOutbox(user.id,body),error:null});
+        if(action==="preferences")return json(res,200,{data:await getCommunicationPreferences(user.id,body),error:null});
+        if(action==="preferences/update")return json(res,200,{data:await updateCommunicationPreferences(user.id,body),error:null});
+        if(action==="send")return json(res,200,{data:await sendCommunication(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown communication endpoint"}});
+      }
       if (path==="/api/local/query") {
         if(!user) return json(res,401,{data:null,error:{message:"Sign in required"}});
         return json(res,200,{data:await queryTable(user.id,body),error:null});
@@ -67,6 +81,9 @@ export function createLocalApiServer() {
       return json(res,404,{data:null,error:{message:"Not found"}});
     } catch(error) {
       const safe=error instanceof Error?error.message:"Request failed";
+      if(error?.httpStatus && [400,401,403,404,409].includes(error.httpStatus)){
+        return json(res,error.httpStatus,{data:null,error:{message:safe}});
+      }
       // No database detail, stack trace or financial arguments in logs.
       const known=safe.startsWith("Invalid")||safe.startsWith("Not ")||
         safe.startsWith("Unsupported")||safe.startsWith("This table")||safe.startsWith("Business ")||
