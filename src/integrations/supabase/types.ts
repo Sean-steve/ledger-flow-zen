@@ -1149,6 +1149,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_document_draft: {
+        Args: {
+          _business_id: string
+          _client_id: string
+          _payload: Json
+          _items: Json
+          _document_id?: string | null
+        }
+        Returns: Database["public"]["Tables"]["documents"]["Row"]
+      }
+      set_document_status: {
+        Args: {
+          _document_id: string
+          _status: Database["public"]["Enums"]["doc_lifecycle"]
+        }
+        Returns: Database["public"]["Tables"]["documents"]["Row"]
+      }
+      mark_document_sent: {
+        Args: { _document_id: string }
+        Returns: Database["public"]["Tables"]["documents"]["Row"]
+      }
+      record_payment_v2: {
+        Args: { _request: Json }
+        Returns: Json
+      }
       finalize_document: {
         Args: { _document_id: string }
         Returns: {

@@ -25,6 +25,11 @@ export async function exportSheetImage(
   const node = getSheetNode(root);
   if (!node) throw new Error("Nothing to export yet");
 
+  // Ensure the same web fonts have loaded for preview, print and downloads.
+  if (document.fonts) await document.fonts.ready;
+  if (node.scrollHeight > 14000 || node.scrollWidth > 7000) {
+    throw new Error("This document is too large for a single image. Use Print / Save PDF instead.");
+  }
   const blob = await toBlob(node, {
     pixelRatio: 2,
     backgroundColor: "#ffffff",
@@ -37,5 +42,5 @@ export async function exportSheetImage(
   link.href = url;
   link.download = `${filename}.${format === "jpeg" ? "jpg" : "png"}`;
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

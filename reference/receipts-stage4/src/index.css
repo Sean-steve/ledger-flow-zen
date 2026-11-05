@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+  background-color: #0c0f17;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono-nums {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+.font-serif-display {
+  font-family: 'Newsreader', Georgia, serif;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+

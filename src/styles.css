@@ -257,3 +257,92 @@ h3 {
     transform: none !important;
   }
 }
+
+
+/* Phase 1: a single sheet renderer with eight visual identities.
+   Financial values and optional KRA markers remain data-driven, not cosmetic. */
+.doc-sheet {
+  --doc-accent: #d97706;
+  --doc-ink: #0f172a;
+  --doc-font: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--doc-font);
+  border-top: 5px solid var(--doc-accent);
+  box-shadow: 0 22px 80px oklch(0.08 0.025 264 / 35%);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.doc-sheet h1, .doc-sheet h2, .doc-sheet h3, .doc-sheet-main-header > div > p:first-child {
+  color: var(--doc-ink);
+}
+.doc-sheet-main-header {
+  border-bottom: 2px solid var(--doc-accent);
+}
+.doc-sheet thead {
+  color: var(--doc-ink);
+  border-bottom: 1px solid var(--doc-accent);
+}
+.doc-sheet [data-doc-sheet-section] {
+  break-inside: avoid;
+}
+.doc-sheet[data-template="midnight-ledger"] .doc-sheet-main-header {
+  background: var(--doc-ink);
+  margin: -16mm -14mm 0;
+  padding: 16mm 14mm 8mm;
+}
+.doc-sheet[data-template="midnight-ledger"] .doc-sheet-main-header,
+.doc-sheet[data-template="midnight-ledger"] .doc-sheet-main-header *,
+.doc-sheet[data-template="midnight-ledger"] .doc-sheet-main-header h1 {
+  color: #ffffff;
+}
+.doc-sheet[data-template="modern-minimal"] {
+  border-top-width: 2px;
+}
+.doc-sheet[data-template="modern-minimal"] .doc-sheet-main-header {
+  border-bottom-width: 1px;
+}
+.doc-sheet[data-template="editorial-classic"] h1,
+.doc-sheet[data-template="editorial-classic"] .font-display {
+  font-family: "Newsreader", Georgia, serif;
+}
+.doc-sheet[data-template="linear-mono"],
+.doc-sheet[data-template="compact-ledger"] {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.doc-sheet[data-template="linear-mono"] .font-display,
+.doc-sheet[data-template="compact-ledger"] .font-display {
+  font-family: inherit;
+}
+.doc-sheet[data-template="compact-ledger"] table {
+  font-size: 9px;
+  line-height: 1.25;
+}
+.doc-sheet[data-template="swiss-grid"] .doc-sheet-main-header {
+  border-bottom-width: 5px;
+}
+.doc-sheet[data-template="nordic-studio"] .doc-sheet-main-header {
+  border-bottom-width: 1px;
+}
+.doc-sheet[data-template="nordic-studio"] { border-top-width: 3px; }
+
+@media print {
+  .doc-sheet { box-shadow: none; border-top-color: var(--doc-accent); overflow: visible; }
+  .doc-sheet table thead { display: table-header-group; }
+  .doc-sheet table tr, .doc-sheet footer, .doc-sheet-main-header {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .doc-sheet table { break-inside: auto; }
+}
+
+/* Print only the actual document sheet, not studio controls or share chrome. */
+@media print {
+  .print-area { overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .print-area > div { transform: none !important; }
+  .doc-sheet { min-height: 0; padding: 16mm 14mm; break-after: auto; }
+  .doc-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* A hypothetical Studio design is never an official invoice export. */
+@media print {
+  .studio-route { display: none !important; }
+}

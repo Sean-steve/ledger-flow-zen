@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWorkspace } from "@/components/app-shell";
 import { useClientBalances, useDocuments, useLedger, usePayments } from "@/lib/db";
 import {
@@ -48,10 +49,22 @@ function ReportsPage() {
   const documents = useDocuments(businessId);
   const payments = usePayments(businessId);
   const balances = useClientBalances(businessId);
-  const currency = business.base_currency;
+  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
+  const availableCurrencies = useMemo(() => Array.from(new Set([
+    business.base_currency,
+    ...(ledger.data ?? []).map(row => row.currency),
+    ...(documents.data ?? []).map(row => row.currency),
+    ...(payments.data ?? []).map(row => row.currency),
+  ].filter((v): v is string => !!v))).sort(), [
+    business.base_currency, ledger.data, documents.data, payments.data,
+  ]);
+  const currency = availableCurrencies.includes(selectedCurrency ?? "")
+    ? selectedCurrency! : business.base_currency;
 
   const ageing = useMemo(() => {
-    const open = (ledger.data ?? []).filter((row) => Number(row.balance ?? 0) > 0.005);
+    const open = (ledger.data ?? []).filter((row) =>
+      row.currency === currency && row.status !== "VOID" && Number(row.balance ?? 0) > 0.005,
+    );
     return BUCKETS.map((bucket) => {
       const rows = open.filter((row) => bucket.test(Number(row.days_overdue ?? 0)));
       return {
@@ -60,12 +73,13 @@ function ReportsPage() {
         total: rows.reduce((sum, row) => sum + Number(row.balance ?? 0), 0),
       };
     });
-  }, [ledger.data]);
+  }, [ledger.data, currency]);
 
   const vat = useMemo(() => {
     const map = new Map<string, { taxable: number; tax: number }>();
     for (const doc of documents.data ?? []) {
-      if (doc.status === "DRAFT" || doc.status === "VOID" || doc.status === "CANCELLED") continue;
+      if (doc.currency !== currency || doc.status === "DRAFT" ||
+          doc.status === "VOID" || doc.status === "CANCELLED") continue;
       if (doc.type === "QUOTATION" || doc.type === "PRO_FORMA") continue;
       const sign = doc.type === "CREDIT_NOTE" ? -1 : 1;
       const rows = Array.isArray(doc.tax_breakdown)
@@ -79,19 +93,20 @@ function ReportsPage() {
       }
     }
     return Array.from(map.entries());
-  }, [documents.data]);
+  }, [documents.data, currency]);
 
   const channels = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
     for (const payment of payments.data ?? []) {
-      if (payment.status === "REVERSED" || payment.status === "FAILED") continue;
+      if (payment.currency !== currency || payment.status === "REVERSED" ||
+          payment.status === "FAILED") continue;
       const current = map.get(payment.channel) ?? { count: 0, total: 0 };
       current.count += 1;
-      current.total += Number(payment.amount ?? 0) * Number(payment.exchange_rate ?? 1);
+      current.total += Number(payment.amount ?? 0);
       map.set(payment.channel, current);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
-  }, [payments.data]);
+  }, [payments.data, currency]);
 
   const statusMix = useMemo(() => {
     const map = new Map<string, number>();
@@ -101,7 +116,10 @@ function ReportsPage() {
     return Array.from(map.entries());
   }, [documents.data]);
 
-  const outstanding = (ledger.data ?? []).reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
+  const outstanding = (ledger.data ?? []).filter(row =>
+    row.currency === currency && row.status !== "VOID"
+  ).reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
+  const currencyBalances = (balances.data ?? []).filter(row => row.currency === currency);
   const collected = channels.reduce((sum, [, value]) => sum + value.total, 0);
   const loading = ledger.isPending || documents.isPending || payments.isPending;
 
@@ -111,8 +129,19 @@ function ReportsPage() {
         <h1 className="text-3xl">Reports</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Derived live from issued documents, allocations and completed payments — nothing is stored
-          twice.
+          twice. All amounts below are segmented by document currency; no unverified FX conversions.
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <label htmlFor="reportCurrency" className="text-xs font-semibold text-muted-foreground">
+            Reporting currency
+          </label>
+          <Select value={currency} onValueChange={setSelectedCurrency}>
+            <SelectTrigger id="reportCurrency" className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {availableCurrencies.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       {loading ? (
@@ -135,7 +164,7 @@ function ReportsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Collected (base currency)
+                  Collected ({currency})
                 </CardTitle>
               </CardHeader>
               <CardContent className="tabular text-2xl">{money(collected, currency)}</CardContent>
@@ -246,13 +275,13 @@ function ReportsPage() {
               <CardTitle>Client statements</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {(balances.data ?? []).length === 0 ? (
+              {currencyBalances.length === 0 ? (
                 <p className="px-6 pb-6 text-sm text-muted-foreground">No client activity yet.</p>
               ) : (
                 <div className="divide-y divide-border">
-                  {(balances.data ?? []).map((row) => (
+                  {currencyBalances.map((row) => (
                     <div
-                      key={row.client_id ?? row.name}
+                      key={`${row.client_id ?? row.name}-${currency}`}
                       className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
                     >
                       <span className="min-w-[160px] font-medium">{row.name}</span>

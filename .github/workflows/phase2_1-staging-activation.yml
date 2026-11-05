@@ -1,0 +1,85 @@
+name: Phase 2.1 — Protected Financial Staging Activation
+
+# This workflow only becomes available after the stacked PRs reach the default branch.
+# Never runs on push or pull_request; only controlled operator dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'preflight, activate or reconcile'
+        type: choice
+        required: true
+        options: [preflight, activate, reconcile, api-check]
+      mode:
+        description: 'bootstrap for empty new project; upgrade for reviewed 0000/0001 baseline'
+        type: choice
+        required: true
+        options: [bootstrap, upgrade]
+      backup_verified:
+        description: 'Confirm a tested encrypted restore point (mandatory for upgrade)'
+        type: boolean
+        required: true
+        default: false
+      empty_schema_approved:
+        description: 'Confirm a dedicated empty FDOS staging project (mandatory for bootstrap)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdos-financial-staging-database
+  cancel-in-progress: false
+
+jobs:
+  guarded-staging-operation:
+    name: 'Protected staging action'
+    runs-on: ubuntu-latest
+    environment: fdos-financial-staging
+    env:
+      FDOS_STAGING_DATABASE_URL: ${{ secrets.FDOS_STAGING_DATABASE_URL }}
+      FDOS_STAGING_ID: ${{ vars.FDOS_STAGING_ID }}
+      FDOS_STAGING_PROJECT_REF: ${{ vars.FDOS_STAGING_PROJECT_REF }}
+      FDOS_STAGING_PROVIDER: ${{ vars.FDOS_STAGING_PROVIDER }}
+      FDOS_STAGING_SELF_HOSTED_HOST: ${{ vars.FDOS_STAGING_SELF_HOSTED_HOST }}
+      FDOS_STAGING_MODE: ${{ inputs.mode }}
+      FDOS_STAGING_API_URL: ${{ vars.FDOS_STAGING_API_URL }}
+      FDOS_STAGING_PUBLISHABLE_KEY: ${{ secrets.FDOS_STAGING_PUBLISHABLE_KEY }}
+      FDOS_STAGING_SELF_HOSTED_API_HOST: ${{ vars.FDOS_STAGING_SELF_HOSTED_API_HOST }}
+      FDOS_STAGING_BACKUP_VERIFIED: ${{ inputs.backup_verified && 'YES' || 'NO' }}
+      FDOS_STAGING_EMPTY_SCHEMA_APPROVED: ${{ inputs.empty_schema_approved && 'YES' || 'NO' }}
+      FDOS_STAGING_APPROVAL: ACTIVATE_STAGING
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm staging secrets are provisioned
+        run: |
+          set -euo pipefail
+          : "${FDOS_STAGING_DATABASE_URL:?Configure the staging-only URL in the GitHub environment}"
+          : "${FDOS_STAGING_ID:?Configure a dedicated stage ID}"
+          : "${FDOS_STAGING_PROJECT_REF:?Configure the exact stage database project reference}"
+          node scripts/staging/verify-target.mjs
+      - name: Read-only preflight
+        if: inputs.operation == 'preflight'
+        run: |
+          set -euo pipefail
+          if [[ "${FDOS_STAGING_MODE}" == "upgrade" ]]; then
+            psql "$FDOS_STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f tests/sql/phase2_preflight.sql
+          else
+            count="$(psql "$FDOS_STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('businesses','documents','payments')")"
+            if [[ "$count" != "0" ]]; then echo 'NOT AN EMPTY FDOS SCHEMA' >&2; exit 1; fi
+            echo 'New staging schema is empty of financial tables.'
+          fi
+      - name: Transactionally activate staging (requires protected environment review)
+        if: inputs.operation == 'activate'
+        run: bash scripts/staging/activate.sh
+      - name: Reconcile an already activated staging DB, read only
+        if: inputs.operation == 'reconcile'
+        run: bash scripts/staging/verify-staging.sh
+      - name: Verify real staging Auth/PostgREST reachability and anonymous RLS
+        if: inputs.operation == 'api-check'
+        run: node scripts/staging/verify-api.mjs

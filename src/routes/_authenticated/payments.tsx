@@ -216,6 +216,8 @@ function RecordPaymentDialog({
   const [payerName, setPayerName] = useState("");
   const [notes, setNotes] = useState("");
   const [allocations, setAllocations] = useState<Record<string, string>>({});
+  // Preserve this key across retries, even if a network response is lost.
+  const [paymentRequestKey, setPaymentRequestKey] = useState(() => crypto.randomUUID());
 
   const openInvoices = useMemo(
     () =>
@@ -239,6 +241,7 @@ function RecordPaymentDialog({
     setPayerName("");
     setNotes("");
     setAllocations({});
+    setPaymentRequestKey(crypto.randomUUID());
   }
 
   return (
@@ -248,6 +251,7 @@ function RecordPaymentDialog({
           <DialogTitle>Record a payment</DialogTitle>
           <DialogDescription>
             Leave allocations blank to settle the oldest open invoices first.
+            This is a manual record of payment received — it does not verify an M-Pesa or bank provider callback.
           </DialogDescription>
         </DialogHeader>
 
@@ -273,6 +277,7 @@ function RecordPaymentDialog({
                 payer_name: payerName.trim() || null,
                 notes: notes.trim() || null,
                 allocations: entries,
+                idempotency_key: paymentRequestKey,
               })
               .then(() => {
                 toast.success("Payment recorded and receipt issued");
@@ -410,7 +415,8 @@ function RecordPaymentDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!clientId || amountValue <= 0 || record.isPending}>
+            <Button type="submit" disabled={!clientId || amountValue <= 0 || !Number.isFinite(amountValue) ||
+                Math.round(amountValue * 100) / 100 !== amountValue || record.isPending}>
               {record.isPending ? "Recording…" : "Record payment"}
             </Button>
           </DialogFooter>

@@ -1,3 +1,24 @@
+# Financial Document OS — Local PostgreSQL Development
+
+The current development backend is **PostgreSQL 16 running locally in Docker**, with a loopback-only Node API and locally managed login sessions. **Supabase is not required to run this branch.**
+
+```bash
+git checkout phase2.1/local-postgres-dev
+cp .env.local.example .env.local
+# Edit .env.local and replace both example password values.
+bun install --frozen-lockfile
+bash scripts/local/run-api.sh
+```
+
+Open another terminal and run `bun run dev`. Visit the local URL Vite prints and sign up to create a local workspace.
+
+**Startup guide:** [Local PostgreSQL instructions](docs/phase-2.1/LOCAL_POSTGRES.md).  
+**Validation:** PostgreSQL 16 + local API integration tests **7/7 pass**, plus frontend production build, strict TypeScript, and **13/13** existing document renderer tests on GitHub Actions.
+
+This is a developer-only service bound to localhost, **not a public production backend**. M-Pesa and eTIMS remain unconfigured, and migration of any old cloud database is not part of this branch.
+
+---
+
 # Document Excellence Engine
 
 Refine this Financial Document OS into a production-ready application without redesigning the existing UI.

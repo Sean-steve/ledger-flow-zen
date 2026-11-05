@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "Sean-steve/Receipts",
+  "sourceCommit": "0d4294e83ab6b2352a3b999ac62632663c31b062",
+  "stage": "financial-document-os-stage4",
+  "preservedUnder": "reference/receipts-stage4",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha": "7a550fe79a56f6953f6afc76b0a10864d8956e25",
+      "size": 445
+    },
+    {
+      "path": ".gitignore",
+      "sha": "5a86d2a8aeff6b6a27008e3e5f15000b27897f78",
+      "size": 73
+    },
+    {
+      "path": "README.md",
+      "sha": "ea171fac00253cfc7533e0add94f851caeaf3d3a",
+      "size": 542
+    },
+    {
+      "path": "bun.lock",
+      "sha": "c0d13a5def8c5be738831142a1d3bf840d018e64",
+      "size": 75807
+    },
+    {
+      "path": "index.html",
+      "sha": "9f4e9024e4343138214040101c81ffd679ab51e7",
+      "size": 1289
+    },
+    {
+      "path": "metadata.json",
+      "sha": "d04d06adaf228248a365b5f9a1ec3e7feb709b2f",
+      "size": 299
+    },
+    {
+      "path": "package-lock.json",
+      "sha": "f44d77b183c5a9dc3450fd3cbdbccfeaa5264647",
+      "size": 136865
+    },
+    {
+      "path": "package.json",
+      "sha": "6a197a3d8bbf7f775a022e728388cd4b6e3dbecf",
+      "size": 966
+    },
+    {
+      "path": "src/App.tsx",
+      "sha": "d611ec957a11aaef813735aa0c8ae792f7329e7e",
+      "size": 12298
+    },
+    {
+      "path": "src/application/adjustmentNoteService.test.ts",
+      "sha": "0926cf8fe9e7183c55a9b7ba2873f3c9fe7e5024",
+      "size": 5784
+    },
+    {
+      "path": "src/application/adjustmentNoteService.ts",
+      "sha": "3332898836b305b343e1e00909344493c46926b6",
+      "size": 12328
+    },
+    {
+      "path": "src/application/documentService.test.ts",
+      "sha": "26dfb984469ade09e7d24e45c5658419d8507d85",
+      "size": 5193
+    },
+    {
+      "path": "src/application/documentService.ts",
+      "sha": "f12dff968770044adf144bb7cffb63da7df3d232",
+      "size": 12419
+    },
+    {
+      "path": "src/application/paymentService.test.ts",
+      "sha": "2e740c6b051eebcc283cd21ce4e641efcf79bf55",
+      "size": 6703
+    },
+    {
+      "path": "src/application/paymentService.ts",
+      "sha": "14b2964e38fa260fe3b77e77b234501d6cbde550",
+      "size": 9044
+    },
+    {
+      "path": "src/application/quotationService.test.ts",
+      "sha": "0fd6581886af760975ce4a0ccc078ffe79df817f",
+      "size": 4726
+    },
+    {
+      "path": "src/application/quotationService.ts",
+      "sha": "161d579136a3a2ab2980bf06ef8101865603b54f",
+      "size": 5249
+    },
+    {
+      "path": "src/application/reportingService.ts",
+      "sha": "a884642dffa16955960e786d53e7f372cdaa7026",
+      "size": 7122
+    },
+    {
+      "path": "src/application/templateService.ts",
+      "sha": "0640d8603448b6508d69b671f89468e0df7e4f77",
+      "size": 4168
+    },
+    {
+      "path": "src/application/testFixtures.ts",
+      "sha": "a92881462941211a15a23eb249954a964311ac05",
+      "size": 1552
+    },
+    {
+      "path": "src/domain/compliance.ts",
+      "sha": "491107dded25d1e1fcaf7240db37e24b846f163d",
+      "size": 1228
+    },
+    {
+      "path": "src/domain/math.test.ts",
+      "sha": "52889778d8a5b1a2a98b549af366ded01f551f19",
+      "size": 4782
+    },
+    {
+      "path": "src/domain/math.ts",
+      "sha": "e3aa5996397c04a220173be7c77f2eede20c3dfa",
+      "size": 6040
+    },
+    {
+      "path": "src/domain/numbering.test.ts",
+      "sha": "01af98efccd9c1b674b4a06760367a9a2f7e2287",
+      "size": 3176
+    },
+    {
+      "path": "src/domain/numbering.ts",
+      "sha": "88f2761bf52ff557e25b3d0e50e2acf37ed8195f",
+      "size": 3820
+    },
+    {
+      "path": "src/domain/stateMachines.test.ts",
+      "sha": "8af48b98b9731c1c8d624f5a1229ad8f04c596fd",
+      "size": 3214
+    },
+    {
+      "path": "src/domain/stateMachines.ts",
+      "sha": "3cf278a748bd9dee03d26c6049be5facf0d4dd5f",
+      "size": 2659
+    },
+    {
+      "path": "src/index.css",
+      "sha": "e60d1fd58975fa00e8998244e761a88a00a43fda",
+      "size": 506
+    },
+    {
+      "path": "src/infrastructure/documentExport.ts",
+      "sha": "299c45ee1fa783fd5229def5f7378577a178241b",
+      "size": 2851
+    },
+    {
+      "path": "src/infrastructure/shareLinks.ts",
+      "sha": "fcf799587ef6fa1c1636a7789c7b1ab4929110e8",
+      "size": 4462
+    },
+    {
+      "path": "src/infrastructure/storage.ts",
+      "sha": "3d70399d0ce935099e6f83f4f739678b111de371",
+      "size": 28518
+    },
+    {
+      "path": "src/main.tsx",
+      "sha": "080dac371e6d8ba952c0c9a6f668e7195d77091e",
+      "size": 231
+    },
+    {
+      "path": "src/presentation/components/AuditLogView.tsx",
+      "sha": "0e7f063bc4ab39268a369d2d2d469e1eba3306ba",
+      "size": 2444
+    },
+    {
+      "path": "src/presentation/components/ClientsView.tsx",
+      "sha": "6ba682a4abedf6da8840da42a279b3e6cdf41590",
+      "size": 13517
+    },
+    {
+      "path": "src/presentation/components/CreditNotesView.tsx",
+      "sha": "4a1fc1b9d8f92ca3f6df984d0dce563e4d9be132",
+      "size": 8245
+    },
+    {
+      "path": "src/presentation/components/DashboardView.tsx",
+      "sha": "dd96c93ffabfa3018f5c34ecb41e5d0efe8846b7",
+      "size": 25675
+    },
+    {
+      "path": "src/presentation/components/DebitNotesView.tsx",
+      "sha": "db2866f67ba3abe3d6ff0a4f05bee3e085b621a4",
+      "size": 8221
+    },
+    {
+      "path": "src/presentation/components/ExportMenu.tsx",
+      "sha": "049a757707a61c7862fa072459d5efd3596cc62a",
+      "size": 2417
+    },
+    {
+      "path": "src/presentation/components/Header.tsx",
+      "sha": "1a8e27b15485afd75e0ea32614af747d2ea22f6e",
+      "size": 9285
+    },
+    {
+      "path": "src/presentation/components/InvoiceEditorView.tsx",
+      "sha": "3283ba66dfb64417897261958144b6dad3166aea",
+      "size": 27166
+    },
+    {
+      "path": "src/presentation/components/InvoicesListView.tsx",
+      "sha": "5a89a463032b67ab82dedcff64317cae06e43884",
+      "size": 8176
+    },
+    {
+      "path": "src/presentation/components/IssueAdjustmentNoteModal.tsx",
+      "sha": "dbdf43d90d5faea87e32630e1f63f6a99435b0ec",
+      "size": 4596
+    },
+    {
+      "path": "src/presentation/components/LiveDocumentPreview.tsx",
+      "sha": "c6dac6426f91ab1de9a1ee6e5691173dd12dd266",
+      "size": 22095
+    },
+    {
+      "path": "src/presentation/components/PaymentsView.tsx",
+      "sha": "921a2eaa81993721b0d0dd2830c379fa0e4ca6e3",
+      "size": 16024
+    },
+    {
+      "path": "src/presentation/components/QuotationEditorView.tsx",
+      "sha": "6926a06990898165a766838cc51061cd84580ce8",
+      "size": 13089
+    },
+    {
+      "path": "src/presentation/components/QuotationsView.tsx",
+      "sha": "33dfd96343404e62b88f84405a0ea4f392a5a5e4",
+      "size": 9291
+    },
+    {
+      "path": "src/presentation/components/ReceiptsView.tsx",
+      "sha": "edaf64789850aa0565aca4b35ef6f99d69719c31",
+      "size": 7211
+    },
+    {
+      "path": "src/presentation/components/RecordPaymentModal.tsx",
+      "sha": "e9a8be567fee8d12b36e1ef408644a220ce9db39",
+      "size": 15225
+    },
+    {
+      "path": "src/presentation/components/ReportsView.tsx",
+      "sha": "5941bf3fa5c2b3437865819c8e909e0c5b68f879",
+      "size": 9850
+    },
+    {
+      "path": "src/presentation/components/SettingsView.tsx",
+      "sha": "4d67911819a1385ed606104cb1fab16363b22982",
+      "size": 13789
+    },
+    {
+      "path": "src/presentation/components/ShareMenu.tsx",
+      "sha": "2ebfd40231ad6882a08f4ed383d8d047ec381f89",
+      "size": 4179
+    },
+    {
+      "path": "src/presentation/components/Sidebar.tsx",
+      "sha": "fc8f835054a33ebc585cf14383e8c3d6fe89a491",
+      "size": 4571
+    },
+    {
+      "path": "src/presentation/components/TemplatesView.tsx",
+      "sha": "82add66ae7b4d793e3ca9c9ad795051b40c4745e",
+      "size": 15155
+    },
+    {
+      "path": "src/types.ts",
+      "sha": "061971e14d53de738cb4ebd321694d7750f6c7cb",
+      "size": 7149
+    },
+    {
+      "path": "tsconfig.json",
+      "sha": "d88f175b08822f946e8333471fd7fec70ffffff2",
+      "size": 508
+    },
+    {
+      "path": "vite.config.ts",
+      "sha": "c5e01dc0161b9fba28fc0170affd8eaf1598fdbe",
+      "size": 2975
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha": "b6cc20f9c7a94857e1df10fc1127a60325214078",
+      "size": 414
+    }
+  ]
+}
