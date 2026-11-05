@@ -31,7 +31,7 @@ function identifier(value) {
   return value;
 }
 const related = {
-  payments: `, CASE WHEN c.id IS NOT NULL THEN jsonb_build_object('name',c.name) END AS clients`,
+  payments: `, CASE WHEN c.id IS NOT NULL THEN jsonb_build_object('name',c.name,'email',c.email,'phone',c.phone) END AS clients`,
   receipts: `, CASE WHEN p.id IS NOT NULL THEN to_jsonb(p) END AS payments,
       CASE WHEN c.id IS NOT NULL THEN jsonb_build_object('name',c.name) END AS clients`,
   allocations: `, CASE WHEN p.id IS NOT NULL THEN to_jsonb(p) END AS payments`,

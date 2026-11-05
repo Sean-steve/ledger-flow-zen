@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { useWorkspace } from "@/components/app-shell";
 import { ReceiptSheet } from "@/components/document-sheet";
+import { CommunicationSendDialog } from "@/components/communication-send-dialog";
 import { exportSheetImage, printSheet } from "@/lib/doc-export";
 import { useCreateShareLink, useReceipts } from "@/lib/db";
 import { CHANNEL_LABEL, money, shortDate, type PaymentChannel } from "@/lib/format";
@@ -48,7 +49,7 @@ type ReceiptRow = {
     payment_date: string;
     payer_name: string | null;
   } | null;
-  clients: { name: string } | null;
+  clients: { name: string; email?: string | null; phone?: string | null } | null;
 };
 
 function ReceiptsPage() {
@@ -57,6 +58,7 @@ function ReceiptsPage() {
   const share = useCreateShareLink(businessId);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [sendId, setSendId] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const rows = useMemo(() => {
@@ -71,6 +73,7 @@ function ReceiptsPage() {
   }, [receipts.data, search]);
 
   const active = rows.find((row) => row.id === openId) ?? null;
+  const sendReceipt = rows.find((row)=>row.id===sendId) ?? null;
 
   async function copyShareLink(receiptId: string) {
     try {
@@ -148,6 +151,8 @@ function ReceiptsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {row.voided_at ? <Badge variant="destructive">Voided</Badge> : null}
+                    <Button size="sm" variant="outline" disabled={!!row.voided_at}
+                      onClick={()=>setSendId(row.id)}>Send</Button>
                     <Button size="sm" variant="outline" onClick={() => setOpenId(row.id)}>
                       View
                     </Button>
@@ -167,6 +172,16 @@ function ReceiptsPage() {
         </Card>
       )}
 
+      {sendReceipt ?
+        <CommunicationSendDialog
+          open={!!sendReceipt}
+          onOpenChange={open=>{if(!open)setSendId(null);}}
+          businessId={businessId!}
+          receiptId={sendReceipt.id}
+          reference={sendReceipt.receipt_number}
+          clientEmail={sendReceipt.clients?.email}
+          clientPhone={sendReceipt.clients?.phone}
+        />:null}
       <Dialog open={!!active} onOpenChange={(open) => !open && setOpenId(null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] overflow-auto sm:max-w-3xl">
           <DialogHeader className="print-hide">

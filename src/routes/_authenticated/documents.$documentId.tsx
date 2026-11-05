@@ -27,10 +27,12 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DocumentBuilder } from "@/components/document-builder";
+import { CommunicationSendDialog } from "@/components/communication-send-dialog";
 import { DocumentSheet } from "@/components/document-sheet";
 import { useWorkspace } from "@/components/app-shell";
 import {
   useCreateShareLink,
+  useClients,
   useDocument,
   useDocumentActions,
   useRevokeShareLink,
@@ -65,12 +67,14 @@ function DocumentDetailPage() {
   const { businessId } = useWorkspace();
   const navigate = useNavigate();
   const query = useDocument(documentId);
+  const clientList = useClients(businessId);
   const actions = useDocumentActions();
   const shareLinks = useShareLinks(businessId);
   const createShare = useCreateShareLink(businessId);
   const revokeShare = useRevokeShareLink();
   const sheetRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
 
@@ -91,6 +95,7 @@ function DocumentDetailPage() {
 
   const { document, items, business, ledger, allocations, versions } = query.data;
   const isDraft = document.status === "DRAFT";
+  const clientContact=clientList.data?.find(c=>c.id===document.client_id);
   const isCreditNote = document.type === "CREDIT_NOTE";
   const convertible =
     (document.type === "QUOTATION" || document.type === "PRO_FORMA") &&
@@ -246,6 +251,10 @@ function DocumentDetailPage() {
               <CardTitle className="text-base">Share with the client</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {!isDraft && !["VOID","CANCELLED"].includes(document.status) ?
+                <Button className="w-full" onClick={()=>setSendOpen(true)}>
+                  <Send className="size-4"/> Send by Email / WhatsApp
+                </Button> : null}
               {isDraft ? (
                 <p className="text-sm text-muted-foreground">
                   Issue the document first — drafts are not shareable.
@@ -318,8 +327,7 @@ function DocumentDetailPage() {
                 </Button>
               )}
               <p className="text-xs text-muted-foreground">
-                Automated email and WhatsApp delivery are not configured, so sharing hands you a link
-                to send yourself.
+                Manual links work only when the recipient can access this application. Automated sending runs in preview mode until configured.
               </p>
             </CardContent>
           </Card>
@@ -378,6 +386,16 @@ function DocumentDetailPage() {
         </div>
       </div>
 
+
+      <CommunicationSendDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        businessId={businessId!}
+        documentId={document.id}
+        reference={document.doc_number ?? "Document"}
+        clientEmail={clientContact?.email ?? document.client_email}
+        clientPhone={clientContact?.phone}
+      />
       <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
         <DialogContent>
           <DialogHeader>
