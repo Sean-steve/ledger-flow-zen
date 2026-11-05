@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DocumentBuilder } from "@/components/document-builder";
 import { CommunicationSendDialog } from "@/components/communication-send-dialog";
 import { DocumentSheet } from "@/components/document-sheet";
+import { DocumentFiscalPanel } from "@/components/document-fiscal-panel";
 import { useWorkspace } from "@/components/app-shell";
 import {
   useCreateShareLink,
@@ -246,6 +247,13 @@ function DocumentDetailPage() {
         </div>
 
         <div className="space-y-4 print:hidden">
+          <DocumentFiscalPanel
+            businessId={businessId!}
+            documentId={document.id}
+            documentType={document.type}
+            docNumber={document.doc_number}
+            documentStatus={document.status}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Share with the client</CardTitle>
