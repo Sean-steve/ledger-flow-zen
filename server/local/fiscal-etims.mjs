@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { database,withUser } from "./database.mjs";
 import { fiscalRuntime,validateKraPin,callOsCuSandbox } from "./fiscal-oscu-bridge.mjs";
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAPPING_KEYS=new Set(["VAT_16","VAT_8","ZERO_RATED","EXEMPT"]);
 const SALES_ROLES=["OWNER","ADMIN","ACCOUNTANT"];
 function reject(message,httpStatus=400){
