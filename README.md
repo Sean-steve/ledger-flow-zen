@@ -1,5 +1,8 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 3 communication engine:** email/WhatsApp preview, outbox, consent and live-provider adapters are available on `phase3/communications-engine`. Start with **preview mode**. See [Phase 3 setup and activation requirements](docs/phase-3/README.md) before enabling live sending.
+
+
 The current development backend is **PostgreSQL 16 running locally in Docker**, with a loopback-only Node API and locally managed login sessions. **Supabase is not required to run this branch.**
 
 ```bash
