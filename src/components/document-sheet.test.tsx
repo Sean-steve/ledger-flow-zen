@@ -59,7 +59,7 @@ describe("single canonical document rendering contract", () => {
       expect(markup).toContain("INV-CERT-001");
       expect(markup).toContain("Certification service");
       expect(markup).toContain("Balance due");
-      expect(markup).toContain("Not transmitted to KRA eTIMS");
+      expect(markup).toContain("NOT KRA FISCALIZED — THIS IS NOT AN OFFICIAL KRA eTIMS TAX RECEIPT");
     },
   );
 
