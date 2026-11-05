@@ -21,11 +21,11 @@ export function CommunicationSendDialog({
   open:boolean;
   onOpenChange:(next:boolean)=>void;
   businessId:string;
-  documentId?:string;
-  receiptId?:string;
+  documentId?:string | undefined;
+  receiptId?:string | undefined;
   reference:string;
-  clientEmail?:string | null;
-  clientPhone?:string | null;
+  clientEmail?:string | null | undefined;
+  clientPhone?:string | null | undefined;
 }) {
   const config=useCommunicationConfig();
   const send=useSendCommunication();
@@ -39,7 +39,7 @@ export function CommunicationSendDialog({
   async function submit() {
     try {
       const record=await send.mutateAsync({
-        businessId,documentId,receiptId,channel,requestKey,
+        businessId,...(documentId?{documentId}:{}),...(receiptId?{receiptId}:{}),channel,requestKey,
       });
       setResult(record);
       toast.success(record.status==="PREVIEW"?"Local preview recorded":
