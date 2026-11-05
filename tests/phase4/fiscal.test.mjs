@@ -186,7 +186,7 @@ test("mock OSCU sandbox acceptance creates test evidence, not fiscalized invoice
 });
 test("credit note cannot claim a sandbox receipt from another original invoice",async()=>{
  creditId=await createInvoice("CREDIT_NOTE",{
-  parent_document_id:invoiceId,reason:"Services partly returned",
+  parent_document_id:invoiceId,notes:"Services partly returned",
  });
  const preview=await fiscal("prepare",{
   businessId,documentId:creditId,mode:"PREVIEW",requestKey:randomUUID(),

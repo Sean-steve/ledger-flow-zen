@@ -150,7 +150,7 @@ async function fiscalSnapshot(userId,businessId,documentId,mode) {
     }
     let original=null;
     if(d.type==="CREDIT_NOTE"){
-      if(!d.parent_document_id||!d.reason?.trim())
+      if(!d.parent_document_id||!(d.reason?.trim()||d.notes?.trim()))
         throw reject("Credit note requires an original invoice and a documented reason");
       const orig=await tx`SELECT id,type,status,business_id FROM public.documents
         WHERE id=${d.parent_document_id}::uuid AND business_id=${businessId}::uuid`;
@@ -184,8 +184,19 @@ async function fiscalSnapshot(userId,businessId,documentId,mode) {
       issueDate:d.issue_date,currency:d.currency,exchangeRate:String(d.exchange_rate),
       subtotal:toAmount(d.subtotal),discount:toAmount(d.discount_total),
       taxable:toAmount(d.taxable_total),tax:toAmount(d.tax_total),
-      total:toAmount(d.total_amount),taxBreakdown:d.tax_breakdown,
-      creditReason:d.type==="CREDIT_NOTE"?d.reason:null,original,
+      total:toAmount(d.total_amount),
+      // Derive signed amounts for credit notes from immutable item rows.
+      taxBreakdown:Object.values(items.reduce((out,i)=>{
+        const k=i.tax_category;
+        out[k]??={category:k,taxCode:map[k]??null,taxable:0,tax:0};
+        out[k].taxable+=Number(i.taxable_amount)*sign;
+        out[k].tax+=Number(i.tax_amount)*sign;
+        return out;
+      },{})).map(x=>({
+        category:x.category,taxCode:x.taxCode,
+        taxable:x.taxable.toFixed(2),tax:x.tax.toFixed(2),
+      })),
+      creditReason:d.type==="CREDIT_NOTE"?(d.reason?.trim()||d.notes?.trim()):null,original,
       items:items.map(i=>({
         description:i.description,unit:i.unit,quantity:String(i.quantity),
         unitPrice:String(i.unit_price),discountPercent:String(i.discount_pct),
