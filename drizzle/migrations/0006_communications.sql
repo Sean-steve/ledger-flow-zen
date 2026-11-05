@@ -84,6 +84,12 @@ BEGIN
   IF NOT public.can_write_business(_business_id) THEN
     RAISE EXCEPTION 'Not permitted to record a communication preference';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.clients
+    WHERE id=_client_id AND business_id=_business_id
+  ) THEN
+    RAISE EXCEPTION 'Client does not belong to this business';
+  END IF;
   INSERT INTO public.audit_logs
     (business_id,actor_id,action,entity_type,entity_id,details)
   VALUES(_business_id,auth.uid(),'COMMUNICATION_PREFERENCE_UPDATED','CLIENT',

@@ -62,7 +62,7 @@ Changing `FDOS_COMM_MODE` to live by itself does **not** deploy the customer por
 
 `.github/workflows/phase3-communications.yml` uses a disposable plain PostgreSQL 16 instance, runs the authoritative SQL migrations and local auth schema, builds and typechecks React, runs existing document renderer tests and `tests/phase3/communications.test.mjs`.
 
-The 7 HTTP/provider tests cover local signup, tenant isolation, client consent evidence/opt-out, safe URL validation, preview without link/network, duplicate idempotency, provider payload escaping/template parameters and mocked live acceptance. **No real provider is contacted.**
+The 9 HTTP/provider tests cover local signup, tenant isolation, client consent evidence/opt-out, safe URL validation, preview without link/network, duplicate idempotency, provider payload escaping/template parameters, mocked live acceptance, receipt reversal, Resend rejection/uncertain delivery, and no automatic resend. **No real provider is contacted.**
 
 ## Follow-on Phase 3.1 before live activation
 
