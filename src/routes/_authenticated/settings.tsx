@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -239,10 +239,13 @@ function SettingsPage() {
           <CardTitle>KRA eTIMS</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
-          <p className="max-w-xl text-sm text-muted-foreground">
-            No eTIMS connection is configured, so documents are marked as not transmitted and no
-            control code is printed. Nothing here claims compliance until a real connection exists.
-          </p>
+          <div className="max-w-xl space-y-2 text-sm text-muted-foreground">
+            <p>
+              KRA eTIMS remains untransmitted and uncertified. You can prepare fiscal
+              previews and configure an approved OSCU sandbox from the Fiscal Center.
+            </p>
+            <Link className="inline-block underline" to="/fiscal">Open Fiscal Center →</Link>
+          </div>
           <div className="flex items-center gap-2">
             <Switch checked={false} disabled aria-label="eTIMS transmission" />
             <span className="text-sm text-muted-foreground">Not connected</span>

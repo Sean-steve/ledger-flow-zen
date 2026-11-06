@@ -6,6 +6,10 @@ import {
   communicationConfig,listCommunicationOutbox,getCommunicationPreferences,
   updateCommunicationPreferences,sendCommunication,
 } from "./communications.mjs";
+import {
+  fiscalConfig,getFiscalProfile,saveFiscalProfile,listFiscalSubmissions,
+  listFiscalDocument,prepareFiscalSubmission,
+} from "./fiscal-etims.mjs";
 
 const HOST=process.env.FDOS_API_HOST??"127.0.0.1";
 const PORT=Number(process.env.FDOS_API_PORT??5012);
@@ -58,6 +62,17 @@ export function createLocalApiServer() {
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path.startsWith("/api/local/fiscal/")){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/fiscal/".length);
+        if(action==="config")return json(res,200,{data:fiscalConfig(),error:null});
+        if(action==="profile")return json(res,200,{data:await getFiscalProfile(user.id,body),error:null});
+        if(action==="profile/update")return json(res,200,{data:await saveFiscalProfile(user.id,body),error:null});
+        if(action==="submissions")return json(res,200,{data:await listFiscalSubmissions(user.id,body),error:null});
+        if(action==="document")return json(res,200,{data:await listFiscalDocument(user.id,body),error:null});
+        if(action==="prepare")return json(res,200,{data:await prepareFiscalSubmission(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown fiscal endpoint"}});
+      }
       if(path.startsWith("/api/local/communications/")) {
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         const action=path.slice("/api/local/communications/".length);

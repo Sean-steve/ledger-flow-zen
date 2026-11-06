@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import {
   BookOpenCheck,
   FileText,
+  FileCheck2,
   LayoutDashboard,
   Menu,
   Mail,
@@ -54,6 +55,7 @@ const NAV = [
   { to: "/payments", label: "Payments", icon: Wallet },
   { to: "/receipts", label: "Receipts", icon: Receipt },
   { to: "/outbox", label: "Outbox", icon: Mail },
+  { to: "/fiscal", label: "KRA eTIMS", icon: FileCheck2 },
   { to: "/reports", label: "Reports", icon: BookOpenCheck },
   { to: "/audit", label: "Audit trail", icon: ShieldCheck },
   { to: "/settings", label: "Settings", icon: Settings },
