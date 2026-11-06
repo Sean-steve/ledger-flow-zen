@@ -1,5 +1,9 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 5 M-Pesa payments and reconciliation:** the branch `phase5/mpesa-payment-reconciliation` includes an M-Pesa workspace, safe local simulations, Safaricom Daraja sandbox adapters, an evidence/exception inbox and atomic payment/receipt posting. **No live money or production KRA transmission is enabled.** See [Phase 5 documentation](docs/phase-5/README.md).
+
+
+
 > **Phase 4 KRA eTIMS (local foundation):** A fiscal center, validated invoice preview, OSCU sandbox adapter boundary and evidence ledger are available on `phase4/etims-fiscal-integration`. **No production KRA transmission or certified invoice** is enabled. See [Phase 4 instructions](docs/phase-4/README.md).
 
 
