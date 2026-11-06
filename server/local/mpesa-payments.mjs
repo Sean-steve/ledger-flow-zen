@@ -146,7 +146,9 @@ export async function createMpesaRequest(userId,input,options={}){
  const env=options.env??process.env;
  const runtime=paymentConfig(env);
  const doc=await validatedInvoice(userId,businessId,invoiceId,amount);
- const phone=kenyaPhone(input.phone??doc.client_phone);
+ let phone;
+ try{phone=kenyaPhone(input.phone??doc.client_phone);}
+ catch{throw fail("Invalid Kenyan M-Pesa phone number");}
  if(runtime.mode==="SANDBOX"){
   if(!runtime.sandboxReady)throw fail("Daraja sandbox credentials/approval missing",403);
   if(doc.shortcode!==env.FDOS_MPESA_SHORTCODE)

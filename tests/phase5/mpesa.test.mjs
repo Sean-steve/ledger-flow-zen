@@ -227,8 +227,9 @@ test("failed and unknown STK query outcomes never create a payment or receipt",a
   if(url.includes("stkpushquery"))return {ok:true,json:async()=>({ResponseCode:"0"})};
   throw Error("Invalid request");
  };
+ const key=randomUUID();
  const pending=await createMpesaRequest(userId,{
-  businessId,invoiceId:secondInvoiceId,phone:"0712345678",amount:100,requestKey:randomUUID(),
+  businessId,invoiceId:secondInvoiceId,phone:"0712345678",amount:100,requestKey:key,
  },{env:testEnv,transport});
  const cb={Body:{stkCallback:{
   CheckoutRequestID:"CHKTEST00003",MerchantRequestID:"MRTEST0003",
@@ -241,8 +242,10 @@ test("failed and unknown STK query outcomes never create a payment or receipt",a
  assert.equal(uncertain.status,"UNKNOWN");
  assert.equal(uncertain.paymentId,null);
  const retry=await createMpesaRequest(userId,{
-  businessId,invoiceId:secondInvoiceId,phone:"0712345678",amount:100,requestKey:pending.id
+  businessId,invoiceId:secondInvoiceId,phone:"0712345678",amount:100,requestKey:key
  },{env:testEnv,transport});
+ assert.equal(retry.duplicate,true);
+ assert.equal(retry.id,pending.id);
  assert.notEqual(retry.status,"CONFIRMED");
 });
 test("C2B Paybill callbacks are inbox-only and deduplicated; never auto-settle invoices",async()=>{
