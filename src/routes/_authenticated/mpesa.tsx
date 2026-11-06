@@ -146,7 +146,7 @@ function MpesaPage(){
      M-Pesa STK requests use whole KES amounts.
     </p>
     <div className="space-y-2"><Label>Invoice</Label>
-     <Select value={invoiceId||undefined} onValueChange={pickInvoice}>
+     <Select value={invoiceId} onValueChange={pickInvoice}>
       <SelectTrigger><SelectValue placeholder="Choose an invoice"/></SelectTrigger>
       <SelectContent>{invoices.map(i=><SelectItem key={i.id} value={i.id}>
        {i.number} · {money(i.balance,"KES")} outstanding
