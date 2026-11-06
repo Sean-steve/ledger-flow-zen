@@ -10,6 +10,12 @@ import {
   fiscalConfig,getFiscalProfile,saveFiscalProfile,listFiscalSubmissions,
   listFiscalDocument,prepareFiscalSubmission,
 } from "./fiscal-etims.mjs";
+import { callbackTokenMatches } from "./mpesa-daraja.mjs";
+import {
+ mpesaRuntime,mpesaProfile,saveMpesaProfile,listMpesaIntents,listMpesaInbox,
+ mpesaMetrics,createMpesaRequest,simulateMpesaConfirmation,
+ receiveStkCallback,receiveC2bConfirmation,
+} from "./mpesa-payments.mjs";
 
 const HOST=process.env.FDOS_API_HOST??"127.0.0.1";
 const PORT=Number(process.env.FDOS_API_PORT??5012);
@@ -49,6 +55,28 @@ export function createLocalApiServer() {
       try { return json(res,200,{data:await currentUser(req),error:null}); }
       catch { return json(res,503,{data:null,error:{message:"Auth store unavailable"}}); }
     }
+    // Safaricom callbacks do not carry browser Origin or session cookies.
+    // This endpoint is sandbox-only, bound to loopback in local development,
+    // and requires an independent long random shared secret in the route.
+    if(req.method==="POST"&&path.startsWith("/api/provider/mpesa/")) {
+      const parts=path.split("/");
+      const kind=parts[4],secret=parts[5];
+      if(parts.length!==6||!["stk","c2b"].includes(kind)||
+         !callbackTokenMatches(secret)) {
+        return json(res,404,{error:"Not found"});
+      }
+      try {
+        const body=await parseBody(req);
+        const evidence=kind==="stk"?
+          await receiveStkCallback(body):await receiveC2bConfirmation(body);
+        // No evidence (amount, sender, receipt) is reflected to the caller.
+        return json(res,200,kind==="c2b"?
+          {ResultCode:0,ResultDesc:"Accepted for manual reconciliation"}:
+          {ResultCode:0,ResultDesc:"Callback processed",status:evidence.status});
+      }catch{
+        return json(res,400,{ResultCode:1,ResultDesc:"Callback could not be accepted"});
+      }
+    }
     if (req.method!=="POST" || !path.startsWith("/api/local/")) {
       return json(res,404,{data:null,error:{message:"Not found"}});
     }
@@ -62,6 +90,19 @@ export function createLocalApiServer() {
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path.startsWith("/api/local/mpesa/")){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/mpesa/".length);
+        if(action==="config")return json(res,200,{data:mpesaRuntime(),error:null});
+        if(action==="profile")return json(res,200,{data:await mpesaProfile(user.id,body),error:null});
+        if(action==="profile/update")return json(res,200,{data:await saveMpesaProfile(user.id,body),error:null});
+        if(action==="intents")return json(res,200,{data:await listMpesaIntents(user.id,body),error:null});
+        if(action==="inbox")return json(res,200,{data:await listMpesaInbox(user.id,body),error:null});
+        if(action==="metrics")return json(res,200,{data:await mpesaMetrics(user.id,body),error:null});
+        if(action==="request")return json(res,200,{data:await createMpesaRequest(user.id,body),error:null});
+        if(action==="simulate")return json(res,200,{data:await simulateMpesaConfirmation(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown M-Pesa action"}});
+      }
       if(path.startsWith("/api/local/fiscal/")){
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         const action=path.slice("/api/local/fiscal/".length);
