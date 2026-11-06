@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
  Select,SelectContent,SelectItem,SelectTrigger,SelectValue,
@@ -16,7 +17,7 @@ import { money } from "@/lib/format";
 import {
  useMpesaConfig,useMpesaProfile,useMpesaIntents,useMpesaMetrics,
  useMpesaC2bInbox,useSaveMpesaProfile,useCreateMpesaRequest,
- useSimulateMpesaConfirmation,
+ useSimulateMpesaConfirmation,useReconcileC2b,
 } from "@/lib/mpesa";
 
 export const Route=createFileRoute("/_authenticated/mpesa")({
@@ -36,6 +37,11 @@ function MpesaPage(){
  const save=useSaveMpesaProfile();
  const request=useCreateMpesaRequest();
  const simulate=useSimulateMpesaConfirmation();
+ const reconcile=useReconcileC2b();
+ const [reviewId,setReviewId]=useState<string|null>(null);
+ const [reviewInvoiceId,setReviewInvoiceId]=useState("");
+ const [statementReference,setStatementReference]=useState("");
+ const [statementVerified,setStatementVerified]=useState(false);
  const [shortcode,setShortcode]=useState("");
  const [shortcodeType,setShortcodeType]=useState<"PAYBILL"|"TILL">("PAYBILL");
  const [invoiceId,setInvoiceId]=useState("");
@@ -93,6 +99,21 @@ function MpesaPage(){
  }
  function reload(){
   void intents.refetch();void inbox.refetch();void metrics.refetch();void ledger.refetch();
+ }
+ async function confirmC2b(){
+  if(!reviewId||!reviewInvoiceId)return;
+  try{
+   const result=await reconcile.mutateAsync({
+    businessId,inboxId:reviewId,invoiceId:reviewInvoiceId,
+    statementReference,statementVerified,
+   });
+   toast.success(result.duplicate?"Already reconciled":
+    "Manual payment and receipt posted — verified by operator");
+   if(result.unallocated&&Number(result.unallocated)>0){
+    toast.message("Unapplied customer credit: "+money(result.unallocated,"KES"));
+   }
+   setReviewId(null);setReviewInvoiceId("");setStatementReference("");setStatementVerified(false);
+  }catch(e){toast.error(e instanceof Error?e.message:"Could not reconcile C2B");}
  }
  const preview=config.data?.mode!=="SANDBOX";
  return <div className="space-y-6">
@@ -214,11 +235,52 @@ function MpesaPage(){
      !inbox.data?.length?<p className="text-sm text-muted-foreground">No C2B confirmations received.</p>:
      inbox.data.map(row=><div className="rounded-md border p-3 text-xs" key={row.id}>
       <div className="flex flex-wrap items-center gap-2">
-       <Badge variant="destructive">{row.status}</Badge>
+       <Badge variant={row.status==="RECONCILED_MANUALLY"?"secondary":"destructive"}>{row.status}</Badge>
        <span>{money(row.amount,"KES")} · Ref {row.provider_receipt}</span>
       </div>
       <p className="mt-1 text-muted-foreground">Account: {row.bill_reference??"Not provided"}
         {" · "}Customer {row.phone_masked??"Unknown"}</p>
+      {row.status==="REVIEW_REQUIRED"?<>
+       <Button size="sm" variant="outline" className="mt-3" onClick={()=>{
+        setReviewId(row.id);setReviewInvoiceId("");
+        setStatementReference("");setStatementVerified(false);
+       }}>Reconcile against statement</Button>
+       {reviewId===row.id?<div className="mt-3 space-y-3 rounded-md bg-muted/30 p-3">
+        <p className="font-semibold">Independent merchant statement verification required</p>
+        <p className="text-muted-foreground">Do not use this callback as payment proof.
+         Verify transaction reference, shortcode, amount and customer in your M-Pesa organization statement.</p>
+        <div className="space-y-1"><Label>Matching issued KES invoice</Label>
+         <Select value={reviewInvoiceId} onValueChange={setReviewInvoiceId}>
+          <SelectTrigger><SelectValue placeholder="Choose customer invoice"/></SelectTrigger>
+          <SelectContent>{invoices.map(i=><SelectItem key={i.id} value={i.id}>
+           {i.number} · {money(i.balance,"KES")} outstanding
+          </SelectItem>)}</SelectContent>
+         </Select>
+        </div>
+        <div className="space-y-1"><Label>Statement evidence / transaction reference</Label>
+         <Input value={statementReference} onChange={e=>setStatementReference(e.target.value)}
+          placeholder="Statement reference and check date"/>
+        </div>
+        <label className="flex items-start gap-2">
+         <Checkbox checked={statementVerified} onCheckedChange={v=>setStatementVerified(v===true)}/>
+         I independently checked the merchant statement and confirm this payment belongs
+         to the selected customer's invoice.
+        </label>
+        <div className="flex flex-wrap gap-2">
+         <Button size="sm" disabled={!reviewInvoiceId||!statementVerified||
+           statementReference.trim().length<8||reconcile.isPending}
+          onClick={()=>void confirmC2b()}>
+          {reconcile.isPending?"Reconciling…":"Post manually attested payment"}
+         </Button>
+         <Button size="sm" variant="ghost" onClick={()=>setReviewId(null)}>Cancel</Button>
+        </div>
+        <p className="text-muted-foreground">If amount exceeds invoice balance, excess becomes unapplied customer credit.
+         This is an operator-attested posting, not automatic provider verification.</p>
+       </div>:null}
+      </>:null}
+      {row.status==="RECONCILED_MANUALLY"?<p className="mt-2">
+       <Link className="underline" to="/receipts">Receipt generated — see Receipts</Link>
+      </p>:null}
      </div>)}
     <Button variant="outline" asChild size="sm"><Link to="/payments">Go to manual Payments →</Link></Button>
    </CardContent>

@@ -22,7 +22,7 @@ export type MpesaMetrics={
 export type C2bReview={
  id:string;shortcode:string;provider_receipt:string;amount:string;
  bill_reference:string|null;phone_masked:string|null;
- status:string;review_reason:string;created_at:string;reviewed_at:string|null;
+ status:string;review_reason:string;payment_id:string|null;receipt_id:string|null;created_at:string;reviewed_at:string|null;
 };
 export async function mpesaRequest<T>(action:string,body:Record<string,unknown>={}):Promise<T>{
  const response=await fetch("/api/local/mpesa/"+action,{
@@ -77,5 +77,18 @@ export function useSimulateMpesaConfirmation(){
  const qc=useQueryClient();
  return useMutation({mutationFn:(input:{businessId:string;intentId:string})=>
   mpesaRequest<MpesaIntent>("simulate",input),
+ onSuccess:(_,input)=>invalidate(qc,input.businessId)});
+}
+
+export type C2bManualResult={
+ id:string;status:"RECONCILED_MANUALLY";paymentId:string;receiptId:string;
+ applied?:string;unallocated?:string;duplicate:boolean;
+};
+export function useReconcileC2b(){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:(input:{
+  businessId:string;inboxId:string;invoiceId:string;
+  statementReference:string;statementVerified:boolean;
+ })=>mpesaRequest<C2bManualResult>("c2b/reconcile",input),
  onSuccess:(_,input)=>invalidate(qc,input.businessId)});
 }

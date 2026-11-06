@@ -116,7 +116,7 @@ export async function listMpesaInbox(userId,input){
  const businessId=id(input?.businessId,"business ID");
  return withUser(userId,async tx=>{
   const rows=await tx`SELECT id,shortcode,provider_receipt,amount,bill_reference,
-   phone_masked,status,review_reason,created_at,reviewed_at
+   phone_masked,status,review_reason,payment_id,receipt_id,created_at,reviewed_at
    FROM public.mpesa_c2b_inbox WHERE business_id=${businessId}::uuid
    ORDER BY created_at DESC LIMIT 150`;
   return rows;
