@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/components/app-shell";
+import { useCommunicationConfig } from "@/lib/communications";
 import { useUpdateBusiness } from "@/lib/db";
 import { CURRENCIES, TAX_CATEGORIES, TAX_LABEL, type TaxCategory } from "@/lib/format";
 
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function SettingsPage() {
   const { business, businessId } = useWorkspace();
   const update = useUpdateBusiness(businessId);
+  const communications = useCommunicationConfig();
   const [form, setForm] = useState(business);
 
   useEffect(() => setForm(business), [business]);
@@ -219,6 +221,19 @@ function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle>Email and WhatsApp Delivery</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>Mode:</strong> {communications.data?.mode==="live"?"Live":"Local preview (no sending)"}</p>
+          <p><strong>Email API:</strong> {communications.data?.emailConfigured?"Configured":"Not configured"}</p>
+          <p><strong>WhatsApp API:</strong> {communications.data?.whatsappConfigured?"Configured":"Not configured"}</p>
+          <p className="text-xs text-muted-foreground">
+            Provider keys are loaded from private server environment variables, never from this browser.
+            Outbound messages are disabled by default. A public HTTPS customer portal is required for live links.
+          </p>
+          <p className="text-xs text-muted-foreground">See docs/phase-3/README.md to configure providers and approved WhatsApp templates.</p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>KRA eTIMS</CardTitle>

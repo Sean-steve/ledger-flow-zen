@@ -1,0 +1,65 @@
+name: Phase 3 Communications Engine Certification
+on:
+  push:
+    branches: ['phase3/communications-engine']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'tests/phase3/**'
+      - 'drizzle/migrations/0006_communications.sql'
+      - 'scripts/local/**'
+      - '.github/workflows/phase3-communications.yml'
+permissions:
+  contents: read
+jobs:
+  communications:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fdos_comms_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_comms_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_comms_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_comms_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_COMM_MODE: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify scripts
+        run: |
+          bash -n scripts/local/bootstrap.sh scripts/local/migrate-phase3.sh scripts/local/run-api.sh
+          for script in server/local/*.mjs; do node --check "$script"; done
+      - name: Apply financial schema + additive Phase 3 on plain PostgreSQL
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5,6}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Production frontend build
+        run: bun run build
+      - name: Strict TS typecheck
+        run: bunx tsc --noEmit
+      - name: Existing document UI tests
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Phase 3 real PostgreSQL HTTP and mocked-provider tests
+        run: node --test tests/phase3/communications.test.mjs

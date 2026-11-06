@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/components/app-shell";
+import { ClientCommunicationPreferences } from "@/components/client-communication-preferences";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ function ClientsPage() {
   const balances = useClientBalances(businessId);
   const save = useSaveClient(businessId);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [messagingClientId,setMessagingClientId]=useState<string|null>(null);
   const [search, setSearch] = useState("");
 
   // A client can have documents in multiple currencies; never sum them into a single figure.
@@ -148,6 +150,9 @@ function ClientsPage() {
                     <dd className="text-sm text-foreground">{client.payment_terms_days} days</dd>
                   </div>
                 </dl>
+                <Button variant="outline" size="sm" onClick={()=>setMessagingClientId(client.id)}>
+                  Messaging preferences
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setDraft({ ...client })}>
                   Edit
                 </Button>
@@ -157,6 +162,14 @@ function ClientsPage() {
         </div>
       )}
 
+      {messagingClientId ?
+        <ClientCommunicationPreferences
+          open
+          onOpenChange={open=>{if(!open)setMessagingClientId(null);}}
+          businessId={businessId!}
+          clientId={messagingClientId}
+          clientName={clients.data?.find(client=>client.id===messagingClientId)?.name??"Client"}
+        />:null}
       <Dialog open={!!draft} onOpenChange={(open) => (open ? null : setDraft(null))}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
