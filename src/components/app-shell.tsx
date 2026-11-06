@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   ShieldCheck,
+  Smartphone,
   Users,
   Wallet,
 } from "lucide-react";
@@ -53,6 +54,7 @@ const NAV = [
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/studio", label: "Document Studio", icon: Palette },
   { to: "/payments", label: "Payments", icon: Wallet },
+  { to: "/mpesa", label: "M-Pesa", icon: Smartphone },
   { to: "/receipts", label: "Receipts", icon: Receipt },
   { to: "/outbox", label: "Outbox", icon: Mail },
   { to: "/fiscal", label: "KRA eTIMS", icon: FileCheck2 },

@@ -48,6 +48,7 @@ type ReceiptRow = {
     channel_txn_id: string | null;
     payment_date: string;
     payer_name: string | null;
+    notes?: string | null;
   } | null;
   clients: { name: string; email?: string | null; phone?: string | null } | null;
 };
@@ -150,6 +151,8 @@ function ReceiptsPage() {
                     {money(row.payments?.amount ?? 0, row.payments?.currency ?? business.base_currency)}
                   </div>
                   <div className="flex items-center gap-2">
+                    {row.payments?.notes?.includes("SIMULATED LOCAL TEST") ? <Badge variant="destructive">TEST</Badge> : null}
+                    {row.payments?.notes?.includes("DARAJA SANDBOX TEST") ? <Badge variant="secondary">SANDBOX</Badge> : null}
                     {row.voided_at ? <Badge variant="destructive">Voided</Badge> : null}
                     <Button size="sm" variant="outline" disabled={!!row.voided_at}
                       onClick={()=>setSendId(row.id)}>Send</Button>
