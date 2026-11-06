@@ -176,12 +176,11 @@ test("WhatsApp is held without client opt-in, then revived only after recorded c
 });
 test("live automation needs BOTH independent server authorizations",async()=>{
  const wa=(await automate("jobs",{businessId})).find(x=>x.channel==="WHATSAPP"&&x.status==="READY");
- const blocked=await dispatchAutomationJob(userId,{businessId,jobId:wa.id},{
+ await assert.rejects(()=>dispatchAutomationJob(userId,{businessId,jobId:wa.id},{
   automatic:true,env:{FDOS_AUTOMATION_LIVE_ENABLED:"YES",
    FDOS_AUTOMATION_LIVE_APPROVED:"NO",FDOS_COMM_MODE:"live"},
- });
- assert.fail("automatic send should have been denied: "+JSON.stringify(blocked));
-}).catch(()=>{});
+ }),/Unattended customer delivery is disabled/);
+});
 test("preview scheduler does not transmit even with business auto-send setting",async()=>{
  await automate("policy/update",{
   businessId,enabled:true,channel:"EMAIL",dueSoonDays:3,onDue:true,
