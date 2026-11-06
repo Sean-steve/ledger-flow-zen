@@ -50,7 +50,7 @@ export async function sendToProvider({channel,recipient,subject,customerName,ref
     const apiKey=requireText(env.RESEND_API_KEY,"RESEND_API_KEY");
     const from=requireText(env.FDOS_EMAIL_FROM,"FDOS_EMAIL_FROM");
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))throw new Error("Client email is invalid");
-    const html=`<div style="font-family:Arial,sans-serif;max-width:640px"><h2>${htmlEscape(businessName)}</h2><p>Hello ${htmlEscape(customerName)},</p><p>${htmlEscape(subject)} is ready.</p><p><a href="${htmlEscape(shareUrl)}">View your secure document</a></p><p>For security, this link expires in 14 days. Please contact the sender if you need a new copy.</p><p>Kind regards,<br>${htmlEscape(businessName)}</p></div>`;
+    const html=`<div style="font-family:Arial,sans-serif;max-width:640px"><h2>${htmlEscape(businessName)}</h2><p>Hello ${htmlEscape(customerName)},</p><p>${kind==="reminder"?"This is a payment reminder for "+htmlEscape(reference)+". Please review your balance and payment instructions using the secure link.":htmlEscape(subject)+" is ready."}</p><p><a href="${htmlEscape(shareUrl)}">View your secure document</a></p><p>For security, this link expires in 14 days. Please contact the sender if you need a new copy.</p><p>Kind regards,<br>${htmlEscape(businessName)}</p></div>`;
     const response=await transport("https://api.resend.com/emails",{
       method:"POST",signal,
       headers:{
@@ -72,6 +72,7 @@ export async function sendToProvider({channel,recipient,subject,customerName,ref
     const version=env.META_WA_GRAPH_VERSION??"v23.0";
     if(!/^v\d{1,2}\.\d{1,2}$/.test(version))throw new Error("Invalid Meta Graph version");
     const name=requireText(
+      kind==="reminder"?env.FDOS_WA_TEMPLATE_REMINDER:
       kind==="receipt"?env.FDOS_WA_TEMPLATE_RECEIPT:env.FDOS_WA_TEMPLATE_DOCUMENT,
       "WhatsApp template name"
     );

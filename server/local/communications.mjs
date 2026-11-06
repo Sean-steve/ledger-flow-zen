@@ -175,7 +175,12 @@ export async function sendCommunication(userId,input,options={}) {
     if(channel==="EMAIL"&&!ready.emailConfigured)throw inputError("Email provider is not configured");
     if(channel==="WHATSAPP"&&!ready.whatsappConfigured)throw inputError("WhatsApp provider is not configured");
   }
-  const subject=`${target.category.replaceAll("_"," ")} ${target.reference} from ${target.business_name}`.slice(0,250);
+  const reminder=options.purpose==="PAYMENT_REMINDER"&&target.kind==="document"&&
+    target.category==="INVOICE";
+  const subject=(reminder
+    ?`Payment reminder: Invoice ${target.reference} from ${target.business_name}`
+    :`${target.category.replaceAll("_"," ")} ${target.reference} from ${target.business_name}`
+  ).slice(0,250);
   const existing=await existingOutbox(businessId,requestKey);
   if(existing) {
     if(existing.document_id!==target.documentId||existing.receipt_id!==target.receiptId||
@@ -223,7 +228,7 @@ export async function sendCommunication(userId,input,options={}) {
   try {
     result=await sendToProvider({
       channel,recipient,subject,customerName:target.client_name,
-      reference:target.reference,kind:target.kind,shareUrl,requestKey,
+      reference:target.reference,kind:reminder?"reminder":target.kind,shareUrl,requestKey,
       businessName:target.business_name,
     },env,options.transport??fetch);
   }catch(error) {
