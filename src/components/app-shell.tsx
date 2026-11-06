@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import {
   BookOpenCheck,
+  BellRing,
   FileText,
   FileCheck2,
   LayoutDashboard,
@@ -57,6 +58,7 @@ const NAV = [
   { to: "/mpesa", label: "M-Pesa", icon: Smartphone },
   { to: "/receipts", label: "Receipts", icon: Receipt },
   { to: "/outbox", label: "Outbox", icon: Mail },
+  { to: "/automation", label: "Automation", icon: BellRing },
   { to: "/fiscal", label: "KRA eTIMS", icon: FileCheck2 },
   { to: "/reports", label: "Reports", icon: BookOpenCheck },
   { to: "/audit", label: "Audit trail", icon: ShieldCheck },
