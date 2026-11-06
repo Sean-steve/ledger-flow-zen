@@ -338,9 +338,12 @@ export async function dispatchAutomationJob(userId,input,options={}) {
 export async function runAutomationWorker(options={}) {
   const env=options.env??process.env;
   const configured=automationRuntime(env);
-  const bus=await database`SELECT p.business_id,b.owner_id,p.max_per_run,p.auto_send_enabled
-    FROM public.automation_policies p JOIN public.businesses b ON b.id=p.business_id
-    WHERE p.enabled=true ORDER BY p.business_id LIMIT 500`;
+  // Financial alerts operate even when a business has disabled payment reminders.
+  const bus=await database`SELECT b.id AS business_id,b.owner_id,
+      COALESCE(p.max_per_run,30) AS max_per_run,
+      COALESCE(p.auto_send_enabled,false) AS auto_send_enabled
+    FROM public.businesses b LEFT JOIN public.automation_policies p ON p.business_id=b.id
+    ORDER BY b.id LIMIT 500`;
   const summary={scanned:0,created:0,held:0,autoDispatched:0,failed:0};
   const current=localParts(options.now??new Date(),timezone(env));
   for(const b of bus){
