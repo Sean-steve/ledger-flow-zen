@@ -224,7 +224,12 @@ export async function scanAutomation(userId,input,options={}) {
        ${sourceKey},${m.kind},${policy.channel},
        ${hold?"HELD":"READY"},${today}::date,${row.balance},${row.currency},
        ${hold},${userId}::uuid)
-     ON CONFLICT(business_id,source_key) DO NOTHING RETURNING id,status`;
+     ON CONFLICT(business_id,source_key) DO UPDATE SET
+       status=EXCLUDED.status,hold_code=EXCLUDED.hold_code,updated_at=now()
+     WHERE public.automation_jobs.status IN ('READY','HELD') AND
+       (public.automation_jobs.status IS DISTINCT FROM EXCLUDED.status
+        OR public.automation_jobs.hold_code IS DISTINCT FROM EXCLUDED.hold_code)
+     RETURNING id,status`;
     if(!jobs.length)continue;
     created++;
     if(hold)held++;
@@ -263,6 +268,7 @@ export async function dispatchAutomationJob(userId,input,options={}) {
     return {...viewJob(existing),duplicate:true};
   // Re-evaluate authoritative balance and customer opt-outs at the moment of send.
   const rows=await withUser(userId,tx=>tx`SELECT l.balance,l.status::text AS status,
+      l.due_date::text AS due_day,
       c.status::text AS client_status,c.email,c.phone,
       pref.email_opted_out_at,pref.whatsapp_opted_in_at,pref.whatsapp_opted_out_at
     FROM public.invoice_ledger l JOIN public.clients c
@@ -271,11 +277,20 @@ export async function dispatchAutomationJob(userId,input,options={}) {
        ON pref.business_id=c.business_id AND pref.client_id=c.id
     WHERE l.business_id=${businessId}::uuid AND l.invoice_id=${existing.document_id}::uuid`);
   const row=rows[0];
+  const milestone=row?.due_day?reminderMilestone(row.due_day,
+      localParts(options.now??new Date(),timezone(env)).day,{
+        due_soon_days:policy.dueSoonDays,on_due:policy.onDue,
+        overdue_every_days:policy.overdueEveryDays,
+      }):null;
+  const expectedKey=milestone&&
+    `invoice:${existing.document_id}:${milestone.kind}:${row.due_day}:${milestone.bucket}:${existing.channel}`;
   const reason=!row||row.status!=="ISSUED"||Number(row.balance)<=0.005
     ?"INVOICE_NO_LONGER_OUTSTANDING"
-    :customerGate(row,existing.channel);
+    :policy.channel!==existing.channel||expectedKey!==existing.source_key
+      ?"POLICY_OR_SCHEDULE_CHANGED"
+      :customerGate(row,existing.channel);
   if(reason){
-    const status=reason==="INVOICE_NO_LONGER_OUTSTANDING"?"SKIPPED":"HELD";
+    const status=["INVOICE_NO_LONGER_OUTSTANDING","POLICY_OR_SCHEDULE_CHANGED"].includes(reason)?"SKIPPED":"HELD";
     const updated=await database`UPDATE public.automation_jobs
       SET status=${status},hold_code=${reason},processed_at=now(),updated_at=now()
       WHERE id=${jobId}::uuid AND business_id=${businessId}::uuid
