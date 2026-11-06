@@ -160,7 +160,7 @@ function PaymentsPage() {
           <DialogHeader>
             <DialogTitle>Reverse this payment</DialogTitle>
             <DialogDescription>
-              Allocations are unwound, the receipt is voided and invoice balances go back up.
+              Bookkeeping reversal only: allocations are unwound and the receipt voided. This does NOT reverse or refund money in Safaricom M-Pesa or your bank. Confirm any external refund separately.
             </DialogDescription>
           </DialogHeader>
           <Textarea
