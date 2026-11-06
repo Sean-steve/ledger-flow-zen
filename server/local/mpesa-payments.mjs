@@ -346,3 +346,82 @@ export async function receiveC2bConfirmation(payload,env=process.env){
  // reconciled and MUST NEVER be inserted into public.payments automatically.
  return {status:"REVIEW_REQUIRED",duplicate:rows.length===0};
 }
+
+// Authorized manual C2B posting AFTER an independent merchant statement check.
+// This is human-attested reconciliation, NOT automatic provider verification.
+export async function reconcileC2bManually(userId,input) {
+ const businessId=id(input?.businessId,"business ID");
+ const inboxId=id(input?.inboxId,"C2B confirmation ID");
+ const invoiceId=id(input?.invoiceId,"invoice ID");
+ const reference=String(input?.statementReference??"").trim();
+ if(input?.statementVerified!==true||reference.length<8||reference.length>180)
+  throw fail("Confirm merchant statement verification and enter an evidence reference");
+ await withUser(userId,tx=>permitted(tx,businessId));
+ return database.begin(async tx=>{
+  const rows=await tx`SELECT * FROM public.mpesa_c2b_inbox
+   WHERE id=${inboxId}::uuid AND business_id=${businessId}::uuid FOR UPDATE`;
+  const entry=rows[0];
+  if(!entry)throw fail("C2B confirmation not found",404);
+  if(entry.status==="RECONCILED_MANUALLY"){
+   if(entry.reconciliation_evidence!==reference||!entry.payment_id)
+    throw fail("C2B confirmation already reconciled; check its prior receipt",409);
+   return {
+    id:entry.id,status:entry.status,paymentId:entry.payment_id,
+    receiptId:entry.receipt_id,duplicate:true,
+   };
+  }
+  if(entry.status!=="REVIEW_REQUIRED")
+   throw fail("This C2B confirmation cannot be reconciled");
+  const profile=await tx`SELECT shortcode_type FROM public.mpesa_profiles
+   WHERE business_id=${businessId}::uuid AND shortcode=${entry.shortcode}`;
+  if(!profile.length)throw fail("Business shortcode is no longer authorized");
+  const documents=await tx`SELECT d.id,d.business_id,d.client_id,d.currency,
+     d.type::text AS type,d.status::text AS status,l.balance
+    FROM public.documents d
+    JOIN public.invoice_ledger l ON l.invoice_id=d.id
+    WHERE d.id=${invoiceId}::uuid AND d.business_id=${businessId}::uuid
+    FOR UPDATE OF d`;
+  const invoice=documents[0];
+  if(!invoice||invoice.type!=="INVOICE"||invoice.status!=="ISSUED"||
+     invoice.currency!=="KES")
+   throw fail("Select an issued KES invoice belonging to this business");
+  const available=Number(invoice.balance),amount=Number(entry.amount);
+  if(!Number.isFinite(available)||available<=0||!Number.isFinite(amount)||amount<=0)
+   throw fail("Invoice has no outstanding balance for C2B allocation");
+  const applied=Math.min(available,amount);
+  if(applied<=0.001)throw fail("No amount available for invoice allocation");
+  // Posting is authoritative only because this authenticated user explicitly
+  // attested to an independent M-Pesa statement check.
+  await tx.unsafe("SET LOCAL ROLE authenticated");
+  await tx`SELECT set_config('request.jwt.claim.sub',${userId}::text,true)`;
+  const receiptNum=entry.provider_receipt;
+  const request={
+   business_id:businessId,client_id:invoice.client_id,
+   idempotency_key:entry.id,
+   amount:amount.toFixed(2),currency:"KES",
+   channel:profile[0].shortcode_type==="TILL"?"MPESA_TILL":"MPESA_C2B",
+   reference:receiptNum,channel_txn_id:receiptNum,
+   notes:"C2B MANUALLY ATTESTED AGAINST MERCHANT STATEMENT — NOT AUTOMATICALLY PROVIDER-VERIFIED",
+   allocations:[{invoice_id:invoice.id,amount:applied.toFixed(2)}],
+  };
+  const result=await tx`SELECT public.record_payment_v2(${tx.json(request)}::jsonb) AS result`;
+  await tx.unsafe("SET LOCAL ROLE NONE");
+  const payment=result[0].result.payment,receipt=result[0].result.receipt;
+  const updated=await tx`UPDATE public.mpesa_c2b_inbox SET
+   status='RECONCILED_MANUALLY',payment_id=${payment.id}::uuid,
+   receipt_id=${receipt.id}::uuid,reconciliation_evidence=${reference},
+   reviewed_at=now(),reviewed_by=${userId}::uuid,
+   review_reason='MANUAL_MERCHANT_STATEMENT_ATTESTATION'
+   WHERE id=${entry.id}::uuid RETURNING *`;
+  await tx`INSERT INTO public.mpesa_provider_events
+   (business_id,source,event_type,payload_sha256,provider_receipt,notes)
+   VALUES(${businessId}::uuid,'C2B','MANUALLY_RECONCILED',
+    ${sha({receiptNum,inboxId,statementReference:reference})},
+    ${receiptNum},'Merchant statement checked by authenticated operator')`;
+  return {
+   id:updated[0].id,status:updated[0].status,paymentId:payment.id,
+   receiptId:receipt.id,applied:applied.toFixed(2),
+   unallocated:Math.max(0,amount-applied).toFixed(2),duplicate:false,
+  };
+ });
+}
