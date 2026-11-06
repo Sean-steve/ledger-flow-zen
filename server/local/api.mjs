@@ -14,7 +14,7 @@ import { callbackTokenMatches } from "./mpesa-daraja.mjs";
 import {
  mpesaRuntime,mpesaProfile,saveMpesaProfile,listMpesaIntents,listMpesaInbox,
  mpesaMetrics,createMpesaRequest,simulateMpesaConfirmation,
- receiveStkCallback,receiveC2bConfirmation,
+ receiveStkCallback,receiveC2bConfirmation,reconcileC2bManually,
 } from "./mpesa-payments.mjs";
 
 const HOST=process.env.FDOS_API_HOST??"127.0.0.1";
@@ -101,6 +101,7 @@ export function createLocalApiServer() {
         if(action==="metrics")return json(res,200,{data:await mpesaMetrics(user.id,body),error:null});
         if(action==="request")return json(res,200,{data:await createMpesaRequest(user.id,body),error:null});
         if(action==="simulate")return json(res,200,{data:await simulateMpesaConfirmation(user.id,body),error:null});
+        if(action==="c2b/reconcile")return json(res,200,{data:await reconcileC2bManually(user.id,body),error:null});
         return json(res,404,{data:null,error:{message:"Unknown M-Pesa action"}});
       }
       if(path.startsWith("/api/local/fiscal/")){
