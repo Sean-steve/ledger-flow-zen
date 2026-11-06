@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Undo2, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -80,9 +80,14 @@ function PaymentsPage() {
             Every receipt in this system is generated from a payment recorded here.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="size-4" /> Record payment
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/mpesa">M-Pesa STK &amp; reconciliation</Link>
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="size-4" /> Record payment manually
+          </Button>
+        </div>
       </header>
 
       {payments.isPending ? (
@@ -155,7 +160,7 @@ function PaymentsPage() {
           <DialogHeader>
             <DialogTitle>Reverse this payment</DialogTitle>
             <DialogDescription>
-              Allocations are unwound, the receipt is voided and invoice balances go back up.
+              Bookkeeping reversal only: allocations are unwound and the receipt voided. This does NOT reverse or refund money in Safaricom M-Pesa or your bank. Confirm any external refund separately.
             </DialogDescription>
           </DialogHeader>
           <Textarea

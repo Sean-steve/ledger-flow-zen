@@ -42,7 +42,7 @@ async function verifiedTarget(userId,{businessId,documentId,receiptId}) {
         'RECEIPT'::text AS category,
         CASE WHEN r.voided_at IS NOT NULL OR p.status='REVERSED' THEN 'VOID' ELSE 'ISSUED' END AS lifecycle,
         c.name AS client_name,c.email,c.phone,c.status::text AS client_status,
-        b.name AS business_name
+        b.name AS business_name,p.notes AS payment_notes
         FROM public.receipts r
         JOIN public.payments p ON p.id=r.payment_id AND p.business_id=r.business_id
         JOIN public.clients c ON c.id=r.client_id AND c.business_id=r.business_id
@@ -154,6 +154,9 @@ export async function sendCommunication(userId,input,options={}) {
   const businessId=uuid(input?.businessId,"business ID");
   const target=await verifiedTarget(userId,input);
   const mode=providerAvailability(options.env??process.env).mode;
+  if(target.kind==="receipt"&&mode==="live"&&
+    /SIMULATED LOCAL TEST|DARAJA SANDBOX TEST/.test(target.payment_notes??""))
+    throw inputError("Test receipts cannot be delivered to real customers",403);
   const recipient=channel==="EMAIL"?String(target.email??"").trim():String(target.phone??"").trim();
   if(!recipient)throw inputError("Client does not have a "+(channel==="EMAIL"?"valid email":"WhatsApp phone number"));
   if(channel==="EMAIL"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))

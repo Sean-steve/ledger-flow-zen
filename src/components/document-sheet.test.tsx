@@ -92,4 +92,33 @@ describe("single canonical document rendering contract", () => {
     expect(markup).toContain("VOIDED");
     expect(markup).toContain("Certification Client");
   });
+  it("marks simulated and Daraja sandbox receipts as TEST and never as official", () => {
+    const receipt={
+      receipt_number:"RCT-SIM-1",created_at:"2026-11-06",
+      received_by:null,notes:null,voided_at:null,template_id:"executive-atelier",
+    };
+    const common={
+      amount:150,currency:"KES",channel:"MPESA_C2B",reference:"SIM12345",
+      channel_txn_id:null,payment_date:"2026-11-06",payer_name:"Test Customer",
+    };
+    for(const notes of [
+      "SIMULATED LOCAL TEST ONLY — not a real Safaricom payment",
+      "DARAJA SANDBOX TEST — verified through STK callback and query",
+    ]){
+      const markup=renderToStaticMarkup(
+        <ReceiptSheet business={business} receipt={receipt} payment={{...common,notes}}/>,
+      );
+      expect(markup).toContain("TEST RECEIPT");
+      expect(markup).toContain("NOT REAL MONEY RECEIVED");
+      expect(markup).not.toContain("Official receipt");
+    }
+    const genuine=renderToStaticMarkup(
+      <ReceiptSheet business={business} receipt={receipt} payment={{
+        ...common,notes:"BANK_TRANSFER independently confirmed",
+      }}/>,
+    );
+    expect(genuine).toContain("Official receipt");
+    expect(genuine).not.toContain("TEST RECEIPT");
+  });
+
 });

@@ -1,0 +1,72 @@
+name: Phase 5 — M-Pesa Financial Reconciliation Certification
+on:
+  push:
+    branches: ['phase5/mpesa-payment-reconciliation']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'drizzle/migrations/0008_mpesa_payment_reconciliation.sql'
+      - 'scripts/local/**'
+      - 'tests/phase5/**'
+      - '.github/workflows/phase5-mpesa.yml'
+permissions:
+  contents: read
+jobs:
+  mpesa:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fdos_mpesa_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_mpesa_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_mpesa_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_mpesa_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_MPESA_MODE: preview
+      FDOS_MPESA_SANDBOX_APPROVED: 'NO'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Static source checks
+        run: |
+          bash -n scripts/local/bootstrap.sh scripts/local/migrate-phase3.sh scripts/local/migrate-phase4.sh scripts/local/migrate-phase5.sh scripts/local/run-api.sh
+          for f in server/local/*.mjs; do node --check "$f"; done
+      - name: Apply all local financial, communication, fiscal and payment schema
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5,6,7,8}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build frontend
+        run: bun run build
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Existing document renderer tests
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Phase 5 PostgreSQL, sandbox-mocked provider, and security tests
+        run: node --test tests/phase5/mpesa.test.mjs
+      - name: Full local finance and auth workflow regression
+        run: node --test tests/local/api.test.mjs
+      - name: Phase 3 communication regression
+        run: node --test tests/phase3/communications.test.mjs
+      - name: Phase 4 fiscal regression
+        run: node --test tests/phase4/fiscal.test.mjs

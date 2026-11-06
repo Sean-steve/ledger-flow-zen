@@ -274,8 +274,10 @@ export function ReceiptSheet({
     channel_txn_id: string | null;
     payment_date: string;
     payer_name: string | null;
+    notes?: string | null;
   };
 }) {
+  const testPayment = /SIMULATED LOCAL TEST|DARAJA SANDBOX TEST/.test(payment.notes??"");
   const template = getTemplateById(receipt.template_id ?? business.default_template);
   return (
     <article className="doc-sheet" data-doc-sheet data-template={template.id} style={templateStyle(template)}>
@@ -289,7 +291,7 @@ export function ReceiptSheet({
           </div>
         </div>
         <div className="text-right">
-          <p className="font-display text-2xl">Official receipt</p>
+          <p className="font-display text-2xl">{testPayment?"TEST RECEIPT":"Official receipt"}</p>
           <p className="mt-1 text-sm font-semibold">{receipt.receipt_number}</p>
           <p className="text-[11px] text-[color:var(--paper-muted)]">{shortDate(receipt.created_at)}</p>
           {receipt.voided_at ? (
@@ -298,6 +300,9 @@ export function ReceiptSheet({
         </div>
       </header>
 
+      {testPayment ? <p className="mt-3 border-2 border-red-700 p-3 text-center text-[12px] font-bold text-red-700">
+        SIMULATED / SANDBOX PAYMENT — NOT REAL MONEY RECEIVED. DO NOT SEND AS PROOF OF PAYMENT.
+      </p> : null}
       <section className="mt-8 space-y-2 text-[12px]">
         <p>
           Received from <span className="font-semibold">{payment.payer_name ?? receipt.received_by ?? "—"}</span>
