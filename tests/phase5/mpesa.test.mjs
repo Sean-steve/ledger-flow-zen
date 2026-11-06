@@ -5,7 +5,7 @@ import { database } from "../../server/local/database.mjs";
 import { createLocalApiServer } from "../../server/local/api.mjs";
 import {
  mpesaRuntime,saveMpesaProfile,createMpesaRequest,simulateMpesaConfirmation,
- receiveStkCallback,receiveC2bConfirmation,
+ receiveStkCallback,receiveC2bConfirmation,reconcileC2bManually,
 } from "../../server/local/mpesa-payments.mjs";
 import {
  callbackTokenMatches,kenyaPhone,parseStkCallback,parseC2bConfirmation,
@@ -264,6 +264,45 @@ test("C2B Paybill callbacks are inbox-only and deduplicated; never auto-settle i
  const noPay=await database`SELECT COUNT(*)::int AS count FROM public.payments
    WHERE channel_txn_id='SGJ83JS29K'`;
  assert.equal(noPay[0].count,0);
+});
+test("manual C2B reconciliation requires merchant statement and retains unapplied credit",async()=>{
+ const rows=await api("inbox",{businessId});
+ const entry=rows.find(x=>x.provider_receipt==="SGJ83JS29K");
+ assert.ok(entry);
+ const evidence="M-Pesa org statement row SGJ83JS29K checked";
+ const reject=await post("/api/local/mpesa/c2b/reconcile",{
+  businessId,inboxId:entry.id,invoiceId,statementReference:evidence,
+  statementVerified:false,
+ });
+ assert.equal(reject.status,400);
+ const out=await reconcileC2bManually(userId,{
+  businessId,inboxId:entry.id,invoiceId,statementReference:evidence,
+  statementVerified:true,
+ });
+ assert.equal(out.status,"RECONCILED_MANUALLY");
+ assert.equal(out.applied,"600.00");
+ assert.equal(out.unallocated,"125.00");
+ const payment=await ok("/api/local/query",{table:"payments",
+  filters:[{field:"id",value:out.paymentId}],single:true});
+ assert.equal(Number(payment.amount),725);
+ assert.match(payment.notes,/MANUALLY ATTESTED/);
+ const receipt=await ok("/api/local/query",{table:"receipts",
+  filters:[{field:"id",value:out.receiptId}],single:true});
+ assert.equal(receipt.payment_id,out.paymentId);
+ const ledger=await ok("/api/local/query",{table:"invoice_ledger",
+  filters:[{field:"invoice_id",value:invoiceId}],single:true});
+ assert.equal(Number(ledger.balance),0);
+ const available=await database`SELECT unallocated FROM public.unallocated_payment_balances
+    WHERE payment_id=${out.paymentId}::uuid`;
+ assert.equal(Number(available[0].unallocated),125);
+ const replay=await reconcileC2bManually(userId,{
+  businessId,inboxId:entry.id,invoiceId,statementReference:evidence,
+  statementVerified:true,
+ });
+ assert.equal(replay.duplicate,true);
+ const events=await database`SELECT COUNT(*)::int AS count FROM public.mpesa_provider_events
+   WHERE source='C2B' AND event_type='MANUALLY_RECONCILED'`;
+ assert.equal(events[0].count,1);
 });
 test("callback is secret-gated and cannot bypass browser Origin or tenant role",async()=>{
  const webhook=await post("/api/provider/mpesa/stk/bad",{Body:{}});

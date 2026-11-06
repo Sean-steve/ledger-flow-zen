@@ -187,9 +187,10 @@ export function parseStkCallback(payload) {
 export function parseC2bConfirmation(payload){
  const shortcode=safeShortcode(payload?.BusinessShortCode);
  const receipt=String(payload?.TransID??"").trim().toUpperCase();
- const amount=Number(payload?.TransAmount);
- if(!/^[A-Z0-9]{6,32}$/.test(receipt)||!Number.isFinite(amount)||
-    amount<=0||Math.round(amount*100)!==amount*100)
+ const rawAmount=String(payload?.TransAmount??"").trim();
+ const amount=Number(rawAmount);
+ if(!/^[A-Z0-9]{6,32}$/.test(receipt)||!/^\\d+(?:\\.\\d{1,2})?$/.test(rawAmount)||
+    !Number.isFinite(amount)||amount<=0)
    throw new Error("Invalid C2B confirmation fields");
  const phone=String(payload?.MSISDN??"");
  const masked=phone.length>=4?"***"+phone.slice(-4):null;
