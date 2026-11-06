@@ -68,7 +68,7 @@ CREATE TABLE public.mpesa_provider_events (
   source text NOT NULL CHECK (source IN ('STK','C2B','LOCAL_TEST')),
   event_type text NOT NULL CHECK (event_type IN (
     'REQUESTED','ACCEPTED','DECLINED','UNKNOWN','RECEIVED',
-    'VERIFIED','REVIEW_REQUIRED','DUPLICATE'
+    'VERIFIED','MANUALLY_RECONCILED','REVIEW_REQUIRED','DUPLICATE'
   )),
   payload_sha256 text NOT NULL CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'),
   provider_receipt text,
@@ -97,9 +97,17 @@ CREATE TABLE public.mpesa_c2b_inbox (
   status text NOT NULL DEFAULT 'REVIEW_REQUIRED'
     CHECK (status IN ('REVIEW_REQUIRED','RECONCILED_MANUALLY','DISMISSED')),
   review_reason text NOT NULL DEFAULT 'UNVERIFIED_PROVIDER_CALLBACK',
+  reconciliation_evidence text,
+  payment_id uuid UNIQUE REFERENCES public.payments(id) ON DELETE RESTRICT,
+  receipt_id uuid UNIQUE REFERENCES public.receipts(id) ON DELETE RESTRICT,
   reviewed_at timestamptz,
   reviewed_by uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT mpesa_c2b_manual_reconciled_has_financial_record CHECK (
+    status <> 'RECONCILED_MANUALLY' OR
+    (payment_id IS NOT NULL AND receipt_id IS NOT NULL
+     AND reconciliation_evidence IS NOT NULL AND reviewed_by IS NOT NULL)
+  ),
   UNIQUE(shortcode,provider_receipt)
 );
 CREATE INDEX mpesa_c2b_inbox_business_recent_idx
