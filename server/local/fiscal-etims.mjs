@@ -4,6 +4,7 @@
 // 3. A sandbox result NEVER changes documents.kra_status/control_code.
 // 4. KRA production fiscalisation is intentionally unavailable.
 import { createHash } from "node:crypto";
+import {assertBusinessIntegrationEnabled} from "./business-config.mjs";
 import { database,withUser } from "./database.mjs";
 import { fiscalRuntime,validateKraPin,callOsCuSandbox } from "./fiscal-oscu-bridge.mjs";
 
@@ -237,6 +238,7 @@ export async function prepareFiscalSubmission(userId,input,options={}) {
     throw reject("Production fiscal submissions are disabled");
   const env=options.env??process.env;
   const runtime=fiscalRuntime(env);
+  if(mode==="SANDBOX")await assertBusinessIntegrationEnabled(businessId,"ETIMS_SANDBOX");
   if(mode==="SANDBOX"&&!runtime.sandboxReady)
     throw reject("OSCU sandbox requires confirmed approval and sidecar credentials",403);
   // Every request, including replay, must re-check current user permissions.

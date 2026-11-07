@@ -1,6 +1,7 @@
 // Phase 3 communications: authoritative tenant checks, consent, durable outbox.
 // No provider credentials are returned to the browser or saved in the database.
 import { randomBytes } from "node:crypto";
+import {assertBusinessIntegrationEnabled} from "./business-config.mjs";
 import { database, withUser } from "./database.mjs";
 import {
   normalizePhone,providerAvailability,resolvePublicBase,sendToProvider,
@@ -171,6 +172,7 @@ export async function sendCommunication(userId,input,options={}) {
   const env=options.env??process.env;
   const base=mode==="live"?resolvePublicBase(env):null;
   if(mode==="live"){
+    await assertBusinessIntegrationEnabled(businessId,channel);
     const ready=providerAvailability(env);
     if(channel==="EMAIL"&&!ready.emailConfigured)throw inputError("Email provider is not configured");
     if(channel==="WHATSAPP"&&!ready.whatsappConfigured)throw inputError("WhatsApp provider is not configured");
