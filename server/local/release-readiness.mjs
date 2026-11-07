@@ -5,7 +5,7 @@ import {assertLocalRuntime} from "./http-security.mjs";
 import {providerAvailability} from "./communication-providers.mjs";
 import {paymentConfig} from "./mpesa-daraja.mjs";
 import {fiscalRuntime} from "./fiscal-oscu-bridge.mjs";
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function error(message,status=400){const e=new Error(message);e.httpStatus=status;return e;}
 export async function releaseReadiness(userId,body,env=process.env){
  const businessId=body?.businessId;
