@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
+import {assertLocalRuntime,attachSecurityHeaders,expectedOrigin,readJsonBody} from "./http-security.mjs";
+import {releaseReadiness} from "./release-readiness.mjs";
 import { database } from "./database.mjs";
-import { currentUser, handleAuth } from "./auth.mjs";
+import { currentUser, handleAuth, revokeAllSessions } from "./auth.mjs";
 import { queryTable, runRpc } from "./domain.mjs";
 import {
   communicationConfig,listCommunicationOutbox,getCommunicationPreferences,
@@ -27,12 +29,10 @@ import {
  receiveStkCallback,receiveC2bConfirmation,reconcileC2bManually,
 } from "./mpesa-payments.mjs";
 
-const HOST=process.env.FDOS_API_HOST??"127.0.0.1";
+const {host:HOST,origin:ORIGIN}=assertLocalRuntime(process.env);
 const PORT=Number(process.env.FDOS_API_PORT??5012);
-const ORIGIN=process.env.FDOS_FRONTEND_ORIGIN??"http://localhost:3000";
-if (!["127.0.0.1","localhost"].includes(HOST)) {
-  throw new Error("Development financial API must bind to loopback only");
-}
+if(!Number.isInteger(PORT)||PORT<1024||PORT>65535)
+  throw new Error("Invalid local financial API port");
 function json(res,status,body) {
   res.writeHead(status,{
     "Content-Type":"application/json; charset=utf-8",
@@ -43,17 +43,10 @@ function json(res,status,body) {
   });
   res.end(JSON.stringify(body));
 }
-async function parseBody(req,maxLength=256000) {
-  let text="";
-  for await (const part of req) {
-    text+=part.toString("utf8");
-    if(text.length>maxLength) throw new Error("Request body too large");
-  }
-  try { return JSON.parse(text||"{}"); }
-  catch { throw new Error("Invalid JSON body"); }
-}
+
 export function createLocalApiServer() {
   return createServer(async (req,res)=>{
+    attachSecurityHeaders(res);
     const path=new URL(req.url??"/","http://localhost").pathname;
     if(req.method==="GET"&&path.startsWith("/api/local/config/logo/")){
       // Private, authenticated, bounded raster assets; never expose SQL blobs.
@@ -94,7 +87,7 @@ export function createLocalApiServer() {
         return json(res,404,{error:"Not found"});
       }
       try {
-        const body=await parseBody(req);
+        const body=await readJsonBody(req);
         const evidence=kind==="stk"?
           await receiveStkCallback(body):await receiveC2bConfirmation(body);
         // No evidence (amount, sender, receipt) is reflected to the caller.
@@ -111,13 +104,21 @@ export function createLocalApiServer() {
     // Exact origin check prevents cross-site POSTs against HttpOnly session cookies.
     if (req.headers.origin!==ORIGIN) return json(res,403,{data:null,error:{message:"Origin not allowed"}});
     try {
-      const body=await parseBody(req,path==="/api/local/config/branding/logo/upload"?365000:256000);
+      const body=await readJsonBody(req,path==="/api/local/config/branding/logo/upload"?365000:256000);
       if (path.startsWith("/api/local/auth/")) {
         const action=path.slice("/api/local/auth/".length);
         const result=await handleAuth(req,res,action,body);
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path==="/api/local/ops/revoke-sessions"){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        return json(res,200,{data:await revokeAllSessions(user.id,res),error:null});
+      }
+      if(path==="/api/local/ops/readiness"){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        return json(res,200,{data:await releaseReadiness(user.id,body),error:null});
+      }
       if(path.startsWith("/api/local/config/")){
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         const action=path.slice("/api/local/config/".length);
@@ -196,7 +197,7 @@ export function createLocalApiServer() {
       return json(res,404,{data:null,error:{message:"Not found"}});
     } catch(error) {
       const safe=error instanceof Error?error.message:"Request failed";
-      if(error?.httpStatus && [400,401,403,404,409].includes(error.httpStatus)){
+      if(error?.httpStatus && [400,401,403,404,409,413,415,429].includes(error.httpStatus)){
         return json(res,error.httpStatus,{data:null,error:{message:safe}});
       }
       // No database detail, stack trace or financial arguments in logs.

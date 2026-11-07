@@ -12,7 +12,7 @@ function parseSession(req) {
   return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 function cookie(token, age) {
-  return `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/local; Max-Age=${age}`;
+  return `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/local; Max-Age=${age}; Priority=High`;
 }
 async function passwordHash(password) {
   const salt=randomBytes(16).toString("hex");
@@ -31,8 +31,11 @@ function publicUser(user) {
 }
 async function sessionFor(user, res) {
   const token=randomBytes(32).toString("hex");
-  await database`INSERT INTO fdos_local.sessions(token_hash,user_id,expires_at)
-    VALUES(${digest(token)},${user.id},now()+interval '7 days')`;
+  await database.begin(async tx=>{
+    await tx`DELETE FROM fdos_local.sessions WHERE expires_at<now()`;
+    await tx`INSERT INTO fdos_local.sessions(token_hash,user_id,expires_at)
+      VALUES(${digest(token)},${user.id},now()+interval '7 days')`;
+  });
   res.setHeader("Set-Cookie", cookie(token,WEEK));
   return publicUser(user);
 }
@@ -44,11 +47,23 @@ export async function currentUser(req) {
     WHERE s.token_hash=${digest(token)} AND s.expires_at>now() LIMIT 1`;
   return rows[0]?publicUser(rows[0]):null;
 }
+export async function revokeAllSessions(userId,res){
+  if(!/^[0-9a-f-]{36}$/i.test(String(userId??"")))throw new Error("Authentication is required");
+  const removed=await database`DELETE FROM fdos_local.sessions
+    WHERE user_id=${userId}::uuid RETURNING token_hash`;
+  res.setHeader("Set-Cookie",cookie("",0));
+  return {revokedCount:removed.length};
+}
 const attempts=new Map();
 function throttle(key) {
   const now=Date.now(), past=attempts.get(key)??[];
   const recent=past.filter(x=>now-x<15*60*1000);
-  if (recent.length>=10) throw new Error("Too many sign-in attempts; retry later");
+  if (recent.length>=10) {
+    const e=new Error("Too many sign-in attempts; retry later");
+    e.httpStatus=429;throw e;
+  }
+  // Avoid unbounded memory growth from many different guessed email addresses.
+  if(attempts.size>2048)attempts.delete(attempts.keys().next().value);
   recent.push(now);
   attempts.set(key,recent);
 }
