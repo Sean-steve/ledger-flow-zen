@@ -19,7 +19,7 @@ export function DocumentSheet({
   branding,
 }: {
   business: Business;
-  branding?: BusinessBranding | null;
+  branding?: BusinessBranding | null | undefined;
   document: DocumentRow;
   items: DocumentItem[];
   ledger?: InvoiceLedger | null;
@@ -273,7 +273,7 @@ export function ReceiptSheet({
   branding,
 }: {
   business: Business;
-  branding?: BusinessBranding | null;
+  branding?: BusinessBranding | null | undefined;
   receipt: { receipt_number: string; created_at: string; received_by: string | null; notes: string | null; voided_at: string | null; template_id?: string | null };
   payment: {
     amount: number | string;
