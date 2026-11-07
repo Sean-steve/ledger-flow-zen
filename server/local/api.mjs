@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import {assertLocalRuntime,attachSecurityHeaders,expectedOrigin,readJsonBody} from "./http-security.mjs";
 import {releaseReadiness} from "./release-readiness.mjs";
 import { database } from "./database.mjs";
-import { currentUser, handleAuth } from "./auth.mjs";
+import { currentUser, handleAuth, revokeAllSessions } from "./auth.mjs";
 import { queryTable, runRpc } from "./domain.mjs";
 import {
   communicationConfig,listCommunicationOutbox,getCommunicationPreferences,
@@ -111,6 +111,10 @@ export function createLocalApiServer() {
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path==="/api/local/ops/revoke-sessions"){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        return json(res,200,{data:await revokeAllSessions(user.id,res),error:null});
+      }
       if(path==="/api/local/ops/readiness"){
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         return json(res,200,{data:await releaseReadiness(user.id,body),error:null});
