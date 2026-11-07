@@ -43,11 +43,11 @@ function json(res,status,body) {
   });
   res.end(JSON.stringify(body));
 }
-async function parseBody(req) {
+async function parseBody(req,maxLength=256000) {
   let text="";
   for await (const part of req) {
     text+=part.toString("utf8");
-    if(text.length>256000) throw new Error("Request body too large");
+    if(text.length>maxLength) throw new Error("Request body too large");
   }
   try { return JSON.parse(text||"{}"); }
   catch { throw new Error("Invalid JSON body"); }
@@ -111,7 +111,7 @@ export function createLocalApiServer() {
     // Exact origin check prevents cross-site POSTs against HttpOnly session cookies.
     if (req.headers.origin!==ORIGIN) return json(res,403,{data:null,error:{message:"Origin not allowed"}});
     try {
-      const body=await parseBody(req);
+      const body=await parseBody(req,path==="/api/local/config/branding/logo/upload"?365000:256000);
       if (path.startsWith("/api/local/auth/")) {
         const action=path.slice("/api/local/auth/".length);
         const result=await handleAuth(req,res,action,body);
