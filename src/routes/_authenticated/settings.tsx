@@ -113,9 +113,13 @@ function SettingsPage() {
             These details print on every document you issue.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline"><Link to="/configuration">Branding & integrations</Link></Button>
+          <Button asChild variant="outline"><Link to="/team">Team roles</Link></Button>
         <Button onClick={save} disabled={update.isPending}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
+        </div>
       </header>
 
       <Card>

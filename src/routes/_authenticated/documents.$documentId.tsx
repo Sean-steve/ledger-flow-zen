@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DocumentBuilder } from "@/components/document-builder";
 import { CommunicationSendDialog } from "@/components/communication-send-dialog";
 import { DocumentSheet } from "@/components/document-sheet";
+import {useBusinessConfig} from "@/lib/business-config";
 import { DocumentFiscalPanel } from "@/components/document-fiscal-panel";
 import { useWorkspace } from "@/components/app-shell";
 import {
@@ -66,6 +67,7 @@ export const Route = createFileRoute("/_authenticated/documents/$documentId")({
 function DocumentDetailPage() {
   const { documentId } = Route.useParams();
   const { businessId } = useWorkspace();
+  const businessConfig=useBusinessConfig(businessId);
   const navigate = useNavigate();
   const query = useDocument(documentId);
   const clientList = useClients(businessId);
@@ -243,7 +245,7 @@ function DocumentDetailPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div ref={sheetRef} className="print-area overflow-x-auto">
-          <DocumentSheet business={business} document={document} items={items} ledger={ledger} />
+          <DocumentSheet business={business} branding={businessConfig.data?.branding} document={document} items={items} ledger={ledger} />
         </div>
 
         <div className="space-y-4 print:hidden">

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useWorkspace } from "@/components/app-shell";
 import { DocumentSheet } from "@/components/document-sheet";
+import {useBusinessConfig} from "@/lib/business-config";
 import { TemplateGallery } from "@/components/template-gallery";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/studio")({
 
 function StudioPage() {
   const { business, businessId } = useWorkspace();
+  const businessConfig=useBusinessConfig(businessId);
   const documents = useDocuments(businessId);
   const update = useUpdateBusiness(businessId);
   const defaultTemplate = getTemplateById(business.default_template).id;
@@ -137,6 +139,7 @@ function StudioPage() {
               ) : (
                 <div className="studio-design-preview overflow-x-auto rounded-md bg-muted/30 p-2 sm:p-4 print:overflow-visible print:rounded-none print:bg-white print:p-0">
                   <DocumentSheet
+                    branding={businessConfig.data?.branding}
                     business={preview.data.business}
                     document={preview.data.document}
                     items={preview.data.items}

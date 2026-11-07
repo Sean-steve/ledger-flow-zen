@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useWorkspace } from "@/components/app-shell";
 import { DocumentSheet } from "@/components/document-sheet";
+import {useBusinessConfig} from "@/lib/business-config";
 import { DOCUMENT_TEMPLATES, getTemplateById, type TemplateId } from "@/lib/document-templates";
 import {
   useClients,
@@ -85,6 +86,7 @@ export function DocumentBuilder({
 }) {
   const { business, businessId } = useWorkspace();
   const clients = useClients(businessId);
+  const businessConfig = useBusinessConfig(businessId);
   const create = useCreateDraft(businessId);
   const replace = useReplaceDraftItems();
   const navigate = useNavigate();
@@ -109,6 +111,12 @@ export function DocumentBuilder({
   const [templateId, setTemplateId] = useState<TemplateId>(
     getTemplateById(existing?.document.template_id ?? business.default_template).id,
   );
+  const [templateManuallySelected,setTemplateManuallySelected]=useState(false);
+  useEffect(()=>{
+    if(existing?.document||templateManuallySelected)return;
+    const perType=businessConfig.data?.templates[type];
+    setTemplateId(getTemplateById(perType??business.default_template).id);
+  },[existing?.document,templateManuallySelected,businessConfig.data,type,business.default_template]);
   const [showPreview, setShowPreview] = useState(false);
 
   const parsed = useMemo(
@@ -356,7 +364,7 @@ export function DocumentBuilder({
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Document design</Label>
-              <Select value={templateId} onValueChange={(value) => setTemplateId(value as TemplateId)}>
+              <Select value={templateId} onValueChange={(value) => {setTemplateManuallySelected(true);setTemplateId(value as TemplateId);}}>
                 <SelectTrigger aria-label="Document template">
                   <SelectValue />
                 </SelectTrigger>
@@ -611,7 +619,7 @@ export function DocumentBuilder({
             </p>
           </div>
           <div className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-2 sm:p-4">
-            <DocumentSheet business={business} document={previewDocument} items={previewItems} />
+            <DocumentSheet business={business} branding={businessConfig.data?.branding} document={previewDocument} items={previewItems} />
           </div>
         </section>
       )}
