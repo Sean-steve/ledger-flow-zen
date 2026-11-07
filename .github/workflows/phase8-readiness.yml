@@ -70,11 +70,14 @@ jobs:
         run: node --test tests/phase8/release.test.mjs
       - name: Verify backup/archive and full disposable database restore
         run: |
-          pg_dump -U postgres -d fdos_phase8_ci -Fc --no-owner --no-acl -f "$RUNNER_TEMP/fdos-phase8.dump"
-          pg_restore -l "$RUNNER_TEMP/fdos-phase8.dump" >/dev/null
-          createdb -U postgres -T template0 fdos_phase8_restore_ci
-          pg_restore -U postgres -d fdos_phase8_restore_ci --clean --if-exists --no-owner --no-acl --exit-on-error "$RUNNER_TEMP/fdos-phase8.dump"
-          psql -X -v ON_ERROR_STOP=1 -d fdos_phase8_restore_ci -At -c "
+          # Match pg_dump/pg_restore major to PostgreSQL 16; runner's default
+          # client may be newer and emit unsupported transaction_timeout SETs.
+          pg16() { docker run --rm --network host -e PGPASSWORD=postgres -v "$RUNNER_TEMP:/backups" postgres:16-alpine "$@"; }
+          pg16 pg_dump -h 127.0.0.1 -U postgres -d fdos_phase8_ci -Fc --no-owner --no-acl -f /backups/fdos-phase8.dump
+          pg16 pg_restore -l /backups/fdos-phase8.dump >/dev/null
+          pg16 createdb -h 127.0.0.1 -U postgres -T template0 fdos_phase8_restore_ci
+          pg16 pg_restore -h 127.0.0.1 -U postgres -d fdos_phase8_restore_ci --clean --if-exists --no-owner --no-acl --exit-on-error /backups/fdos-phase8.dump
+          pg16 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d fdos_phase8_restore_ci -At -c "
             SELECT
               to_regclass('public.documents') IS NOT NULL AND
               to_regclass('public.payments') IS NOT NULL AND
@@ -83,4 +86,4 @@ jobs:
               to_regclass('fdos_local.users') IS NOT NULL AND
               (SELECT count(*) FROM public.businesses)>=1 AND
               (SELECT count(*) FROM public.payments)>=1;" | grep -qx t
-          dropdb -U postgres fdos_phase8_restore_ci
+          pg16 dropdb -h 127.0.0.1 -U postgres fdos_phase8_restore_ci
