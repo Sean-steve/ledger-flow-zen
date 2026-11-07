@@ -3,6 +3,7 @@ import {useEffect,useState} from "react";
 import {Palette,ShieldCheck,UploadCloud,PlugZap,Trash2} from "lucide-react";
 import {toast} from "sonner";
 import {useWorkspace} from "@/components/app-shell";
+import {useSession} from "@/lib/db";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card,CardContent,CardHeader,CardTitle} from "@/components/ui/card";
@@ -27,6 +28,7 @@ export const Route=createFileRoute("/_authenticated/configuration")({
 const TYPES:DocTemplateType[]=["INVOICE","PRO_FORMA","QUOTATION","CREDIT_NOTE","DEBIT_NOTE"];
 function BusinessConfigurationPage(){
  const {business,businessId}=useWorkspace();
+ const session=useSession();
  const config=useBusinessConfig(businessId);
  const team=useTeam(businessId);
  const brand=useSaveBranding();
@@ -43,12 +45,14 @@ function BusinessConfigurationPage(){
  useEffect(()=>{
   if(!config.data)return;
   setBranding(config.data.branding);
-  setRules(Object.fromEntries(TYPES.map(t=>[t,config.data?.templates[t]??"business_default"]))
-    as Record<DocTemplateType,string>);
+  const nextRules=Object.fromEntries(TYPES.map(t=>[
+    t,config.data.templates[t]??"business_default",
+  ])) as Record<DocTemplateType,string>;
+  setRules(nextRules);
   setFlags(config.data.integrationFlags);
  },[config.data]);
  const myRole=team.data?.members.find(member=>
-  member.userId===business.owner_id)?.role;
+  member.userId===session.userId)?.role;
  // Provider and membership permissions are enforced on the backend regardless
  // of client-side disabled state.
  async function saveBranding(){
