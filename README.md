@@ -1,5 +1,7 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 7 — Business Setup and Team:** Branding, document-type template defaults, owner-governed integration switches and secure invitation codes are available on `phase7/business-configuration`. See the [Phase 7 runbook](docs/phase-7/README.md) to test locally.
+
 > **Phase 6 Automation:** Payment reminders, notification inbox and a local one-shot scheduler are available on `phase6/financial-automation`. Provider sending is OFF by default. See [Phase 6 runbook](docs/phase-6/README.md).
 
 > **Phase 5 M-Pesa payments and reconciliation:** the branch `phase5/mpesa-payment-reconciliation` includes an M-Pesa workspace, safe local simulations, Safaricom Daraja sandbox adapters, an evidence/exception inbox and atomic payment/receipt posting. **No live money or production KRA transmission is enabled.** See [Phase 5 documentation](docs/phase-5/README.md).
