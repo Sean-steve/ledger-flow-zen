@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import {
   BookOpenCheck,
   BellRing,
+  Activity,
   Building2,
   UserRoundCog,
   FileText,
@@ -66,6 +67,7 @@ const NAV = [
   { to: "/audit", label: "Audit trail", icon: ShieldCheck },
   { to: "/configuration", label: "Business Setup", icon: Building2 },
   { to: "/team", label: "Team & Roles", icon: UserRoundCog },
+  { to: "/system-status", label: "System Readiness", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
