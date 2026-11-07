@@ -238,11 +238,12 @@ export async function prepareFiscalSubmission(userId,input,options={}) {
     throw reject("Production fiscal submissions are disabled");
   const env=options.env??process.env;
   const runtime=fiscalRuntime(env);
+  // Always validate tenant authority before exposing integration readiness.
+  // Every request, including replay, must re-check current user permissions.
+  const payload=await fiscalSnapshot(userId,businessId,documentId,mode);
   if(mode==="SANDBOX")await assertBusinessIntegrationEnabled(businessId,"ETIMS_SANDBOX");
   if(mode==="SANDBOX"&&!runtime.sandboxReady)
     throw reject("OSCU sandbox requires confirmed approval and sidecar credentials",403);
-  // Every request, including replay, must re-check current user permissions.
-  const payload=await fiscalSnapshot(userId,businessId,documentId,mode);
   const duplicate=await findExisting(businessId,requestKey,documentId,mode);
   if(duplicate)return duplicate;
   const hash=createHash("sha256").update(JSON.stringify(payload)).digest("hex");

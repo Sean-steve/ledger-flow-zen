@@ -216,7 +216,7 @@ function BusinessConfigurationPage(){
       <ShieldCheck className="size-4"/>Only the business owner can save provider permissions.
       Switches never change server secrets or authorize KRA production.
      </p>
-     <Button disabled={!flags||integrations.isPending||myRole==="VIEWER"}
+     <Button disabled={!flags||integrations.isPending||myRole!=="OWNER"}
       onClick={()=>void saveIntegrations()}>
       {integrations.isPending?"Saving…":"Save provider permissions"}</Button>
     </div>
