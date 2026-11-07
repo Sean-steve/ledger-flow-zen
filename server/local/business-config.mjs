@@ -263,7 +263,7 @@ export async function inviteTeamMember(userId,input){
  const token=randomBytes(32).toString("hex");
  const tokenHash=createHash("sha256").update(token).digest("hex");
  const entry=await database.begin(async tx=>{
-  const member=await tx`SELECT id FROM fdos_local.users u JOIN public.business_members m
+  const member=await tx`SELECT m.id FROM fdos_local.users u JOIN public.business_members m
     ON m.user_id=u.id AND m.business_id=${businessId}::uuid
     WHERE u.email=${inviteEmail} LIMIT 1`;
   if(member.length)throw bad("This user already belongs to the business",409);
