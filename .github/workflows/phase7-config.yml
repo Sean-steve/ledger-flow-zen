@@ -1,0 +1,63 @@
+name: Phase 7 — Business Configuration & RBAC Certification
+on:
+  push:
+    branches: ['phase7/business-configuration']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'drizzle/migrations/0010_business_configuration.sql'
+      - 'scripts/local/**'
+      - 'tests/phase7/**'
+      - '.github/workflows/phase7-config.yml'
+permissions:
+  contents: read
+jobs:
+  configuration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_DB: fdos_config_ci, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_config_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_config_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_config_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_COMM_MODE: preview
+      FDOS_MPESA_MODE: preview
+      FDOS_ETIMS_MODE: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate scripts and Node modules
+        run: |
+          bash -n scripts/local/bootstrap.sh scripts/local/migrate-phase7.sh
+          for s in server/local/*.mjs; do node --check "$s"; done
+      - name: Apply financial and local PostgreSQL migrations
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5,6,7,8,9}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0010_business_configuration.sql
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Production frontend build
+        run: bun run build
+      - name: Strict TypeScript checking
+        run: bunx tsc --noEmit
+      - name: Canonical document and receipt templates
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Phase 7 real PostgreSQL identity, team, logo and integration tests
+        run: node --test tests/phase7/configuration.test.mjs
