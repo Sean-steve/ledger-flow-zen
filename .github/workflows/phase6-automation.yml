@@ -1,0 +1,62 @@
+name: Phase 6 — Financial Automation & Notifications Certification
+on:
+  push:
+    branches: ['phase6/financial-automation']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'drizzle/migrations/0009_automation_notifications.sql'
+      - 'scripts/local/**'
+      - 'tests/phase6/**'
+      - '.github/workflows/phase6-automation.yml'
+permissions:
+  contents: read
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_DB: fdos_automation_ci, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_automation_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_automation_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_automation_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_COMM_MODE: preview
+      FDOS_AUTOMATION_LIVE_ENABLED: 'NO'
+      FDOS_AUTOMATION_LIVE_APPROVED: 'NO'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify local script and JavaScript syntax
+        run: |
+          bash -n scripts/local/bootstrap.sh scripts/local/migrate-phase6.sh scripts/local/run-automation-tick.sh
+          for s in server/local/*.mjs; do node --check "$s"; done
+      - name: Apply all PostgreSQL migrations including automation
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5,6,7,8,9}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+      - name: Production frontend build
+        run: bun run build
+      - name: Strict TS types
+        run: bunx tsc --noEmit
+      - name: Existing document rendering tests
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Phase 6 real PostgreSQL integration and provider-mock tests
+        run: node --test tests/phase6/automation.test.mjs

@@ -15,6 +15,7 @@ if [[ "$exists" == "t" ]]; then
   bash scripts/local/migrate-phase3.sh
   bash scripts/local/migrate-phase4.sh
   bash scripts/local/migrate-phase5.sh
+  bash scripts/local/migrate-phase6.sh
   exit 0
 fi
 # The SQL runs inside a single transaction: no half-initialized financial tables.
@@ -29,6 +30,7 @@ fi
  cat drizzle/migrations/0006_communications.sql
  cat drizzle/migrations/0007_fiscal_etims.sql
  cat drizzle/migrations/0008_mpesa_payment_reconciliation.sql
+ cat drizzle/migrations/0009_automation_notifications.sql
  echo 'COMMIT;'
 } | sql >/dev/null
 echo "Local FDOS PostgreSQL schema and local authentication tables ready."

@@ -12,6 +12,11 @@ import {
 } from "./fiscal-etims.mjs";
 import { callbackTokenMatches } from "./mpesa-daraja.mjs";
 import {
+  automationRuntime,getAutomationPolicy,saveAutomationPolicy,scanAutomation,
+  listAutomationJobs,dispatchAutomationJob,listFinancialNotifications,
+  markNotificationRead,
+} from "./automation.mjs";
+import {
  mpesaRuntime,mpesaProfile,saveMpesaProfile,listMpesaIntents,listMpesaInbox,
  mpesaMetrics,createMpesaRequest,simulateMpesaConfirmation,
  receiveStkCallback,receiveC2bConfirmation,reconcileC2bManually,
@@ -90,6 +95,19 @@ export function createLocalApiServer() {
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path.startsWith("/api/local/automation/")){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/automation/".length);
+        if(action==="config")return json(res,200,{data:automationRuntime(),error:null});
+        if(action==="policy")return json(res,200,{data:await getAutomationPolicy(user.id,body),error:null});
+        if(action==="policy/update")return json(res,200,{data:await saveAutomationPolicy(user.id,body),error:null});
+        if(action==="scan")return json(res,200,{data:await scanAutomation(user.id,body),error:null});
+        if(action==="jobs")return json(res,200,{data:await listAutomationJobs(user.id,body),error:null});
+        if(action==="dispatch")return json(res,200,{data:await dispatchAutomationJob(user.id,body),error:null});
+        if(action==="notifications")return json(res,200,{data:await listFinancialNotifications(user.id,body),error:null});
+        if(action==="notifications/read")return json(res,200,{data:await markNotificationRead(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown automation endpoint"}});
+      }
       if(path.startsWith("/api/local/mpesa/")){
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         const action=path.slice("/api/local/mpesa/".length);
