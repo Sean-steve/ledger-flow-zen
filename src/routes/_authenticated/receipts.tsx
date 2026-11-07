@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { useWorkspace } from "@/components/app-shell";
 import { ReceiptSheet } from "@/components/document-sheet";
+import {useBusinessConfig} from "@/lib/business-config";
 import { CommunicationSendDialog } from "@/components/communication-send-dialog";
 import { exportSheetImage, printSheet } from "@/lib/doc-export";
 import { useCreateShareLink, useReceipts } from "@/lib/db";
@@ -55,6 +56,7 @@ type ReceiptRow = {
 
 function ReceiptsPage() {
   const { business, businessId } = useWorkspace();
+  const businessConfig=useBusinessConfig(businessId);
   const receipts = useReceipts(businessId);
   const share = useCreateShareLink(businessId);
   const [search, setSearch] = useState("");
@@ -221,7 +223,7 @@ function ReceiptsPage() {
               </div>
               <div className="print-area overflow-auto" ref={sheetRef}>
                 <div className="origin-top-left scale-[0.62] sm:scale-75">
-                  <ReceiptSheet business={business} receipt={active} payment={active.payments} />
+                  <ReceiptSheet business={business} branding={businessConfig.data?.branding} receipt={active} payment={active.payments} />
                 </div>
               </div>
             </>

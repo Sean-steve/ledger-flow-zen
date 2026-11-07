@@ -1,4 +1,6 @@
 import type { Business, DocumentItem, DocumentRow, InvoiceLedger } from "@/lib/db";
+import type {CSSProperties} from "react";
+import type {BusinessBranding} from "@/lib/business-config";
 import { DOC_TYPE_LABEL, money, num, shortDate, TAX_LABEL } from "@/lib/format";
 import type { DocType, TaxCategory } from "@/lib/format";
 import { getTemplateById, templateStyle } from "@/lib/document-templates";
@@ -14,8 +16,10 @@ export function DocumentSheet({
   items,
   ledger,
   templateId,
+  branding,
 }: {
   business: Business;
+  branding?: BusinessBranding | null | undefined;
   document: DocumentRow;
   items: DocumentItem[];
   ledger?: InvoiceLedger | null;
@@ -31,10 +35,12 @@ export function DocumentSheet({
     : [];
 
   return (
-    <article className="doc-sheet" data-doc-sheet data-template={template.id} style={templateStyle(template)}>
+    <article className="doc-sheet" data-doc-sheet data-template={template.id} style={{...templateStyle(template),...(branding?.accentColor?{"--doc-accent":branding.accentColor} as CSSProperties:{})}}>
       <header className="doc-sheet-main-header flex items-start justify-between gap-8 border-b border-[color:var(--paper-border)] pb-6">
         <div>
+          {branding?.logoUrl?<img className="mb-3 max-h-16 max-w-48 object-contain" src={branding.logoUrl} alt={business.name+" logo"} crossOrigin="use-credentials" />:null}
           <h1 className="font-display text-3xl leading-tight">{business.name}</h1>
+          {branding?.headerTagline?<p className="mt-1 text-xs text-[color:var(--paper-muted)]">{branding.headerTagline}</p>:null}
           {business.trading_name ? (
             <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--paper-muted)]">
               {business.trading_name}
@@ -228,6 +234,7 @@ export function DocumentSheet({
         </div>
       </section>
 
+      {branding?.footerNote?<p className="mt-4 text-[10px] text-[color:var(--paper-muted)]">{branding.footerNote}</p>:null}
       <footer className="mt-8 flex items-end justify-between gap-8 border-t border-[color:var(--paper-border)] pt-5 text-[10px] text-[color:var(--paper-muted)]">
         <div className="max-w-[110mm] whitespace-pre-line">
           {document.legal_terms ?? business.default_legal_terms ?? ""}
@@ -263,8 +270,10 @@ export function ReceiptSheet({
   business,
   receipt,
   payment,
+  branding,
 }: {
   business: Business;
+  branding?: BusinessBranding | null | undefined;
   receipt: { receipt_number: string; created_at: string; received_by: string | null; notes: string | null; voided_at: string | null; template_id?: string | null };
   payment: {
     amount: number | string;
@@ -283,7 +292,9 @@ export function ReceiptSheet({
     <article className="doc-sheet" data-doc-sheet data-template={template.id} style={templateStyle(template)}>
       <header className="doc-sheet-main-header flex items-start justify-between border-b border-[color:var(--paper-border)] pb-6">
         <div>
+          {branding?.logoUrl?<img className="mb-3 max-h-16 max-w-48 object-contain" src={branding.logoUrl} alt={business.name+" logo"} crossOrigin="use-credentials" />:null}
           <h1 className="font-display text-3xl">{business.name}</h1>
+          {branding?.headerTagline?<p className="mt-1 text-xs text-[color:var(--paper-muted)]">{branding.headerTagline}</p>:null}
           <div className="mt-2 space-y-0.5 text-[11px] text-[color:var(--paper-muted)]">
             {business.email ? <p>{business.email}</p> : null}
             {business.phone ? <p>{business.phone}</p> : null}
@@ -331,6 +342,7 @@ export function ReceiptSheet({
           </p>
         </div>
       </footer>
+      {branding?.footerNote?<p className="mt-4 text-[10px] text-[color:var(--paper-muted)]">{branding.footerNote}</p>:null}
     </article>
   );
 }

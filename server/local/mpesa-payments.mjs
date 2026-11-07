@@ -2,6 +2,7 @@
 // PREVIEW uses test-only receipts; SANDBOX calls Safaricom test endpoints.
 // Neither mode enables real payment settlement or production credentials.
 import { createHash } from "node:crypto";
+import {assertBusinessIntegrationEnabled} from "./business-config.mjs";
 import { database,withUser } from "./database.mjs";
 import {
  paymentConfig,kenyaPhone,safeShortcode,requestStkPush,
@@ -150,6 +151,7 @@ export async function createMpesaRequest(userId,input,options={}){
  try{phone=kenyaPhone(input.phone??doc.client_phone);}
  catch{throw fail("Invalid Kenyan M-Pesa phone number");}
  if(runtime.mode==="SANDBOX"){
+  await assertBusinessIntegrationEnabled(businessId,"MPESA");
   if(!runtime.sandboxReady)throw fail("Daraja sandbox credentials/approval missing",403);
   if(doc.shortcode!==env.FDOS_MPESA_SHORTCODE)
    throw fail("Business shortcode must match the configured Daraja sandbox shortcode",403);

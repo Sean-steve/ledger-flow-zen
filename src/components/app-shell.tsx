@@ -4,6 +4,8 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import {
   BookOpenCheck,
   BellRing,
+  Building2,
+  UserRoundCog,
   FileText,
   FileCheck2,
   LayoutDashboard,
@@ -62,6 +64,8 @@ const NAV = [
   { to: "/fiscal", label: "KRA eTIMS", icon: FileCheck2 },
   { to: "/reports", label: "Reports", icon: BookOpenCheck },
   { to: "/audit", label: "Audit trail", icon: ShieldCheck },
+  { to: "/configuration", label: "Business Setup", icon: Building2 },
+  { to: "/team", label: "Team & Roles", icon: UserRoundCog },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

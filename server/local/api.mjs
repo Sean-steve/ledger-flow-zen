@@ -12,6 +12,11 @@ import {
 } from "./fiscal-etims.mjs";
 import { callbackTokenMatches } from "./mpesa-daraja.mjs";
 import {
+ getBusinessConfig,saveBranding,saveLogo,removeLogo,loadLogo,
+ saveTemplateRules,saveIntegrationFlags,listTeam,inviteTeamMember,
+ acceptTeamInvitation,revokeTeamInvitation,updateTeamRole,removeTeamMember,
+} from "./business-config.mjs";
+import {
   automationRuntime,getAutomationPolicy,saveAutomationPolicy,scanAutomation,
   listAutomationJobs,dispatchAutomationJob,listFinancialNotifications,
   markNotificationRead,
@@ -38,11 +43,11 @@ function json(res,status,body) {
   });
   res.end(JSON.stringify(body));
 }
-async function parseBody(req) {
+async function parseBody(req,maxLength=256000) {
   let text="";
   for await (const part of req) {
     text+=part.toString("utf8");
-    if(text.length>256000) throw new Error("Request body too large");
+    if(text.length>maxLength) throw new Error("Request body too large");
   }
   try { return JSON.parse(text||"{}"); }
   catch { throw new Error("Invalid JSON body"); }
@@ -50,6 +55,24 @@ async function parseBody(req) {
 export function createLocalApiServer() {
   return createServer(async (req,res)=>{
     const path=new URL(req.url??"/","http://localhost").pathname;
+    if(req.method==="GET"&&path.startsWith("/api/local/config/logo/")){
+      // Private, authenticated, bounded raster assets; never expose SQL blobs.
+      try{
+        const user=await currentUser(req);
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const businessId=path.slice("/api/local/config/logo/".length);
+        const logo=await loadLogo(user.id,{businessId});
+        res.writeHead(200,{
+          "Content-Type":logo.mime,"Content-Length":logo.bytes.length,
+          "Cache-Control":"private, max-age=120","X-Content-Type-Options":"nosniff",
+          "Content-Security-Policy":"default-src 'none'; sandbox",
+          "Referrer-Policy":"no-referrer",
+        });
+        return res.end(logo.bytes);
+      }catch(error){
+        return json(res,error?.httpStatus??404,{data:null,error:{message:"Logo unavailable"}});
+      }
+    }
     if (req.method==="GET" && path==="/api/local/health") {
       try {
         await database`SELECT 1`;
@@ -88,13 +111,30 @@ export function createLocalApiServer() {
     // Exact origin check prevents cross-site POSTs against HttpOnly session cookies.
     if (req.headers.origin!==ORIGIN) return json(res,403,{data:null,error:{message:"Origin not allowed"}});
     try {
-      const body=await parseBody(req);
+      const body=await parseBody(req,path==="/api/local/config/branding/logo/upload"?365000:256000);
       if (path.startsWith("/api/local/auth/")) {
         const action=path.slice("/api/local/auth/".length);
         const result=await handleAuth(req,res,action,body);
         return json(res,200,{data:result.user,error:null});
       }
       const user=await currentUser(req);
+      if(path.startsWith("/api/local/config/")){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/config/".length);
+        if(action==="business")return json(res,200,{data:await getBusinessConfig(user.id,body),error:null});
+        if(action==="branding/save")return json(res,200,{data:await saveBranding(user.id,body),error:null});
+        if(action==="branding/logo/upload")return json(res,200,{data:await saveLogo(user.id,body),error:null});
+        if(action==="branding/logo/remove")return json(res,200,{data:await removeLogo(user.id,body),error:null});
+        if(action==="templates/save")return json(res,200,{data:await saveTemplateRules(user.id,body),error:null});
+        if(action==="integrations/save")return json(res,200,{data:await saveIntegrationFlags(user.id,body),error:null});
+        if(action==="team")return json(res,200,{data:await listTeam(user.id,body),error:null});
+        if(action==="team/invite")return json(res,200,{data:await inviteTeamMember(user.id,body),error:null});
+        if(action==="team/accept")return json(res,200,{data:await acceptTeamInvitation(user.id,body),error:null});
+        if(action==="team/revoke")return json(res,200,{data:await revokeTeamInvitation(user.id,body),error:null});
+        if(action==="team/role")return json(res,200,{data:await updateTeamRole(user.id,body),error:null});
+        if(action==="team/remove")return json(res,200,{data:await removeTeamMember(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown business configuration endpoint"}});
+      }
       if(path.startsWith("/api/local/automation/")){
         if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
         const action=path.slice("/api/local/automation/".length);
