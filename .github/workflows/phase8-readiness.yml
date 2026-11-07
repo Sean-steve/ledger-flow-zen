@@ -1,0 +1,86 @@
+name: Phase 8 — Local Security, Recovery & System Certification
+on:
+  push:
+    branches: ['phase8/security-recovery-certification']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'scripts/recovery/**'
+      - 'tests/phase8/**'
+      - '.github/workflows/phase8-readiness.yml'
+      - '.env.local.example'
+permissions:
+  contents: read
+jobs:
+  local-certification:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fdos_phase8_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_phase8_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_phase8_ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_phase8_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_RELEASE_MODE: local
+      FDOS_COMM_MODE: preview
+      FDOS_MPESA_MODE: preview
+      FDOS_ETIMS_MODE: preview
+      FDOS_AUTOMATION_LIVE_ENABLED: 'NO'
+      FDOS_AUTOMATION_LIVE_APPROVED: 'NO'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax and source-control security hygiene
+        run: |
+          bash -n scripts/recovery/backup-local.sh scripts/recovery/verify-local-backup.sh scripts/local/bootstrap.sh
+          for f in server/local/*.mjs; do node --check "$f"; done
+          ! git ls-files | grep -E '(^|/)\.env\.local$|\.backups/|\.dump$'
+      - name: Initialize PostgreSQL 16 and local authentication
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5,6,7,8,9}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f drizzle/migrations/0010_business_configuration.sql
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+      - name: Build frontend
+        run: bun run build
+      - name: Validate strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Verify print and document templates
+        run: bunx vitest run src/lib/document-templates.test.ts src/components/document-sheet.test.tsx
+      - name: Verify Phase 8 local security and cross-module transactions
+        run: node --test tests/phase8/release.test.mjs
+      - name: Verify backup/archive and full disposable database restore
+        run: |
+          pg_dump -U postgres -d fdos_phase8_ci -Fc --no-owner --no-acl -f "$RUNNER_TEMP/fdos-phase8.dump"
+          pg_restore -l "$RUNNER_TEMP/fdos-phase8.dump" >/dev/null
+          createdb -U postgres -T template0 fdos_phase8_restore_ci
+          pg_restore -U postgres -d fdos_phase8_restore_ci --clean --if-exists --no-owner --no-acl --exit-on-error "$RUNNER_TEMP/fdos-phase8.dump"
+          psql -X -v ON_ERROR_STOP=1 -d fdos_phase8_restore_ci -At -c "
+            SELECT
+              to_regclass('public.documents') IS NOT NULL AND
+              to_regclass('public.payments') IS NOT NULL AND
+              to_regclass('public.receipts') IS NOT NULL AND
+              to_regclass('public.business_branding') IS NOT NULL AND
+              to_regclass('fdos_local.users') IS NOT NULL AND
+              (SELECT count(*) FROM public.businesses)>=1 AND
+              (SELECT count(*) FROM public.payments)>=1;" | grep -qx t
+          dropdb -U postgres fdos_phase8_restore_ci
