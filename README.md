@@ -1,5 +1,7 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 8.1 — Protected Staging:** A separate HTTPS/Caddy + TanStack SSR + private Node API + PostgreSQL 16 deployment scaffold, synthetic-only guardrails, manual approved GitHub deploy and verification scripts are on `phase8.1/staging-release-evidence`. **No actual staging host or production service is activated by this code.** See [Phase 8.1 staging guide](docs/phase-8.1/README.md) and [release evidence matrix](docs/phase-8.1/RELEASE_EVIDENCE.md).
+
 > **Phase 8 — Security and Recovery:** System Readiness dashboard, fail-closed local API, session revocation, PostgreSQL backup/restore drill and release-blocker checklist. **Production remains blocked.** See [Phase 8 instructions](docs/phase-8/README.md) and [Release Gate](docs/phase-8/RELEASE_GATE.md).
 
 > **Phase 7 — Business Setup and Team:** Branding, document-type template defaults, owner-governed integration switches and secure invitation codes are available on `phase7/business-configuration`. See the [Phase 7 runbook](docs/phase-7/README.md) to test locally.
