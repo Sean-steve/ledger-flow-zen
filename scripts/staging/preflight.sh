@@ -20,10 +20,8 @@ set +a
    "$FDOS_STAGE_DOMAIN" == *.* &&
    "$FDOS_STAGE_DOMAIN" != *"/"* ]] ||
   { echo "Set a real dedicated staging DNS name" >&2; exit 1; }
-[[ "$FDOS_STAGE_BASIC_HASH" == '$2a$'* ||
-   "$FDOS_STAGE_BASIC_HASH" == '$2b$'* ||
-   "$FDOS_STAGE_BASIC_HASH" == '$2y$'* ]] ||
-  { echo "Use a real Caddy bcrypt password hash" >&2; exit 1; }
+[[ "$FDOS_STAGE_BASIC_HASH" =~ ^\$2[aby]\$[0-9][0-9]\$[./A-Za-z0-9]{53}$ ]] ||
+  { echo "Use an actual 60-character Caddy bcrypt hash; placeholder hashes are rejected" >&2; exit 1; }
 [[ "$FDOS_STAGE_DB_PASSWORD" != CHANGE_* ]] ||
   { echo "Replace the database password placeholder" >&2; exit 1; }
 # Detect mismatched credential URL and prohibit unsafe managed/private prod URLs.
