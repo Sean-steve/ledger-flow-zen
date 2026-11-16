@@ -5,10 +5,10 @@
 | Gate | Evidence owner | Completion evidence | Current status |
 | --- | --- | --- | --- |
 | Phase 8 merge | GitHub | PR #11 merged to `main` at `1f4db4e918fb563e8c9c6b1a94b5e33357485ea6` | COMPLETE |
-| Staging container + isolated DB tests | GitHub CI | Final Phase 8.1 workflow run with two passing jobs | Pending final CI |
+| Staging container + isolated DB tests | GitHub CI | Phase 8.1 run `43818949568` — 2/2 jobs passed; 5/5 staging guard tests, Node SSR + Docker and database smoke | CI COMPLETE (SYNTHETIC ONLY) |
 | Staging DNS, VPS and HTTPS | Deployment operator | Actual FQDN, valid certificate, API+SSR private health, Basic Auth 401 | NOT PROVISIONED HERE |
 | Protected reviewer & team workflows | QA | Non-production test account, access separation and synthetic finance smoke | NOT VERIFIED ON HOST |
-| Local staging backup→restore | GitHub CI | Disposable PostgreSQL 16 restore of synthetic staging database | Pending final CI |
+| Local staging backup→restore | GitHub CI | Phase 8.1 run `43818949568`: checksum verified and complete disposable PostgreSQL 16 restore | CI COMPLETE (SYNTHETIC ONLY) |
 | Encrypted independent off-host restore | Operations | Object-storage receipt, recovery point, successful external restore | NOT VERIFIED |
 | Production authentication + MFA | Security | Approved external OIDC/MFA, reset, recovery, audit and intrusion test | NOT ACTIVATED |
 | Public customer portal + messages | Integrations | HTTPS share links, verified Resend/Meta sender, webhook validation, opt-out | NOT ACTIVATED |

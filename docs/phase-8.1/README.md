@@ -82,7 +82,7 @@ Configure a GitHub **Environment named `staging` with required reviewers** and s
 - `FDOS_STAGING_SSH_PRIVATE_KEY` — dedicated deployment key.
 - `FDOS_STAGING_KNOWN_HOSTS` — **independently fingerprint-verified** SSH host key, not blindly trusted from ssh-keyscan.
 
-The environment requires a pre-cloned working copy at `/opt/fdos/ledger-flow-zen` and an independently prepared private `.env.staging`. After branch review, manually run **Phase 8.1 — Manual Staging Deploy** with confirmation `STAGING_ONLY`. The workflow checks out the reviewed SHA, connects through pinned SSH, verifies the branch tip exactly matches the approved SHA, and runs `scripts/staging/deploy.sh`. It never deploys to production.
+The environment requires a pre-cloned working copy at `/opt/fdos/ledger-flow-zen` and an independently prepared private `.env.staging`. Once this workflow is merged into the default branch and the protected Environment has been configured, manually run **Phase 8.1 — Manual Staging Deploy** with confirmation `STAGING_ONLY`. The workflow checks out the reviewed SHA, connects through pinned SSH, verifies the branch tip exactly matches the approved SHA, and runs `scripts/staging/deploy.sh`. It never deploys to production.
 
 **GitHub workflow files alone do not provision your VPS or environment secrets.** A staging Environment with required reviewers and the host configuration must be created before running this job.
 
