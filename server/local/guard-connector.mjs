@@ -194,7 +194,7 @@ async function transmitOne(row, env = process.env, transport = fetch) {
     return { delivered: false, httpStatus: response.status };
   return { delivered: true, httpStatus: response.status };
 }
-export async function deliverGuardOutbox({ limit = 10, env = process.env, transport = fetch } = {}) {
+export async function deliverGuardOutbox({ limit = 10, businessId = null, env = process.env, transport = fetch } = {}) {
   guardEndpoint(env); // Fail before attempting any delivery when not in approved local sandbox.
   if (!Number.isInteger(limit) || limit < 1 || limit > 50)
     throw invalid("Invalid Guard dispatch limit");
@@ -202,12 +202,14 @@ export async function deliverGuardOutbox({ limit = 10, env = process.env, transp
   // Per-row locking makes concurrent workers safe. Earlier unresolved events block later ones.
   for (let i = 0; i < limit; i++) {
     const outcome = await database.begin(async tx => {
+      const scope = businessId ? "l.business_id=$1::uuid AND " : "";
       const rows = await tx.unsafe(
         "SELECT o.* FROM fdos_local.guard_outbox o JOIN fdos_local.guard_links l ON l.id=o.link_id " +
-        "WHERE l.enabled AND o.status IN ('PENDING','RETRY') " +
+        "WHERE " + scope + "l.enabled AND o.status IN ('PENDING','RETRY') " +
         "AND o.next_attempt_at <= now() AND NOT EXISTS (SELECT 1 FROM fdos_local.guard_outbox older " +
         "WHERE older.link_id=o.link_id AND older.sequence < o.sequence AND older.status <> 'DELIVERED') " +
-        "ORDER BY o.created_at,o.sequence LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
+        "ORDER BY o.created_at,o.sequence LIMIT 1 FOR UPDATE OF o SKIP LOCKED",
+        businessId ? [uuid(businessId, "business ID")] : []);
       if (!rows.length) return "EMPTY";
       const row = rows[0];
       let result;
@@ -244,9 +246,8 @@ export async function dispatchGuardPreview(userId, input, options) {
     "SELECT id FROM fdos_local.guard_links WHERE invoice_id=$1::uuid AND business_id=$2::uuid",
     [invoiceId, businessId]);
   if (!found.length) throw invalid("Guard link not found", 404);
-  // A global dispatcher is safe because only owners can create links and all
-  // events are SANDBOX; this endpoint never operates in production.
-  return deliverGuardOutbox({limit: 10, ...options});
+  // User-initiated delivery is restricted to the selected authorized business.
+  return deliverGuardOutbox({ limit: 10, ...options, businessId });
 }
 export async function runGuardSandboxTick({ env = process.env, transport = fetch, limit = 25 } = {}) {
   guardEndpoint(env);
