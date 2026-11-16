@@ -1,5 +1,7 @@
 # Financial Document OS — Local PostgreSQL Development
 
+> **Phase 8 — Security and Recovery:** System Readiness dashboard, fail-closed local API, session revocation, PostgreSQL backup/restore drill and release-blocker checklist. **Production remains blocked.** See [Phase 8 instructions](docs/phase-8/README.md) and [Release Gate](docs/phase-8/RELEASE_GATE.md).
+
 > **Phase 7 — Business Setup and Team:** Branding, document-type template defaults, owner-governed integration switches and secure invitation codes are available on `phase7/business-configuration`. See the [Phase 7 runbook](docs/phase-7/README.md) to test locally.
 
 > **Phase 6 Automation:** Payment reminders, notification inbox and a local one-shot scheduler are available on `phase6/financial-automation`. Provider sending is OFF by default. See [Phase 6 runbook](docs/phase-6/README.md).
