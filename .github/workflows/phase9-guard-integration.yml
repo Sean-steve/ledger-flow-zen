@@ -1,0 +1,114 @@
+name: Phase 9 - Nflake Guard sandbox connector (two-repository integration)
+on:
+  push:
+    branches: [feat/guard-sandbox-connector]
+  pull_request:
+    paths:
+      - 'server/local/guard-connector.mjs'
+      - 'src/routes/_authenticated/guard.tsx'
+      - 'src/lib/guard-integration.ts'
+      - 'src/components/app-shell.tsx'
+      - 'server/local/guard-worker.mjs'
+      - 'server/local/api.mjs'
+      - 'drizzle/migrations/0011_guard_sandbox_outbox.sql'
+      - 'scripts/local/*guard*'
+      - 'scripts/local/bootstrap.sh'
+      - 'tests/guard/**'
+      - '.github/workflows/phase9-guard-integration.yml'
+permissions:
+  contents: read
+jobs:
+  guard-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fdos_guard_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fdos_guard_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fdos_guard_ci
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fdos_guard_ci
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_API_HOST: 127.0.0.1
+      FDOS_GUARD_MODE: sandbox
+      FDOS_GUARD_BASE_URL: http://127.0.0.1:4080
+      FDOS_GUARD_CONNECTOR_SECRET: ci-only-guard-shared-signing-secret-longer-than-32-chars
+      FDOS_MPESA_MODE: preview
+      FDOS_COMM_MODE: preview
+      FDOS_RELEASE_MODE: local
+      GUARD_ADMIN_TOKEN: ci-only-guard-admin-token-longer-than-32-characters
+      GUARD_CONNECTOR_SECRET: ci-only-guard-shared-signing-secret-longer-than-32-chars
+      GUARD_VERIFIED_EVENTS_ENABLED: 'NO'
+      GUARD_DRY_RUN: 'YES'
+      GUARD_HOST: 127.0.0.1
+      GUARD_PORT: '4080'
+    steps:
+      - uses: actions/checkout@v4
+      # The Guard MVP is a draft PR in a separate public repository; only test
+      # compatibility here. This does not copy source or enable production.
+      - uses: actions/checkout@v4
+        with:
+          repository: Sean-steve/theGuard
+          ref: feat/guard-mvp
+          path: guard-under-test
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Validate connector and script syntax
+        run: |
+          node --check server/local/guard-connector.mjs
+          node --check server/local/guard-worker.mjs
+          node --check server/local/api.mjs
+          bash -n scripts/local/migrate-guard.sh scripts/local/run-guard-tick.sh scripts/local/bootstrap.sh
+      - name: Apply Financial Document OS migrations (disposable DB)
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/supabase-auth-shim.sql
+          for f in drizzle/migrations/000{0,1,2,3,4,5}_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f server/local/schema.sql
+          for f in drizzle/migrations/000{6,7,8,9}_*.sql drizzle/migrations/0010_*.sql drizzle/migrations/0011_*.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Create separate Guard DB
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -d postgres -c 'CREATE DATABASE nflake_guard_ci'
+          cd guard-under-test
+          npm install --no-audit --no-fund
+          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nflake_guard_ci npm run migrate
+      - name: Install FDOS dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify Financial Document OS frontend and strict types
+        run: |
+          bun run build
+          bunx tsc --noEmit
+      - name: Start independent Guard service on loopback
+        run: |
+          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nflake_guard_ci node guard-under-test/src/server.mjs > "$RUNNER_TEMP/guard-sandbox.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/guard-sandbox.pid"
+          for i in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:4080/healthz > /dev/null && break || sleep 1
+          done
+          curl -fsS http://127.0.0.1:4080/healthz
+      - name: Real FDOS SQL/payment workflow to real Guard sandbox receiver
+        run: node --test tests/guard/connector.integration.test.mjs
+      - name: Guard receiver's own policy/auth unit tests
+        run: cd guard-under-test && npm test
+      - name: Cleanup
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/guard-sandbox.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/guard-sandbox.pid")" || true
+          fi

@@ -2,6 +2,9 @@ import { createServer } from "node:http";
 import {assertLocalRuntime,attachSecurityHeaders,expectedOrigin,readJsonBody} from "./http-security.mjs";
 import {releaseReadiness} from "./release-readiness.mjs";
 import { database } from "./database.mjs";
+import {
+  guardRuntime,registerGuardLink,queueGuardPreview,listGuardOutbox,dispatchGuardPreview,
+} from "./guard-connector.mjs";
 import { currentUser, handleAuth, revokeAllSessions } from "./auth.mjs";
 import { queryTable, runRpc } from "./domain.mjs";
 import {
@@ -183,6 +186,16 @@ export function createLocalApiServer() {
         if(action==="preferences/update")return json(res,200,{data:await updateCommunicationPreferences(user.id,body),error:null});
         if(action==="send")return json(res,200,{data:await sendCommunication(user.id,body),error:null});
         return json(res,404,{data:null,error:{message:"Unknown communication endpoint"}});
+      }
+      if(path.startsWith("/api/local/guard/")){
+        if(!user)return json(res,401,{data:null,error:{message:"Sign in required"}});
+        const action=path.slice("/api/local/guard/".length);
+        if(action==="config")return json(res,200,{data:guardRuntime(),error:null});
+        if(action==="link")return json(res,200,{data:await registerGuardLink(user.id,body),error:null});
+        if(action==="queue")return json(res,200,{data:await queueGuardPreview(user.id,body),error:null});
+        if(action==="outbox")return json(res,200,{data:await listGuardOutbox(user.id,body),error:null});
+        if(action==="dispatch")return json(res,200,{data:await dispatchGuardPreview(user.id,body),error:null});
+        return json(res,404,{data:null,error:{message:"Unknown Guard integration endpoint"}});
       }
       if (path==="/api/local/query") {
         if(!user) return json(res,401,{data:null,error:{message:"Sign in required"}});
