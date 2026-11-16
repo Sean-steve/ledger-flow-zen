@@ -1,0 +1,26 @@
+{
+  email {$FDOS_STAGE_ACME_EMAIL}
+}
+
+{$FDOS_STAGE_DOMAIN} {
+  encode gzip zstd
+  # Access control is an independent staging layer: never allow public signup.
+  basic_auth {
+    {$FDOS_STAGE_BASIC_USER} {$FDOS_STAGE_BASIC_HASH}
+  }
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Frame-Options "DENY"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    -Server
+  }
+  @provider path /api/provider/*
+  respond @provider 404
+  handle /api/local/* {
+    reverse_proxy api:5012
+  }
+  handle {
+    reverse_proxy frontend:3000
+  }
+}
