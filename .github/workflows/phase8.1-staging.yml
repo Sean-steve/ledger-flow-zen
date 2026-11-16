@@ -118,6 +118,12 @@ jobs:
           docker compose --env-file .env.staging -f deploy/staging/compose.yml exec -T frontend node -e '
             fetch("http://127.0.0.1:3000/").then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))
           '
+      - name: Diagnose failed synthetic container health
+        if: failure()
+        run: |
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml ps --all
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml logs --no-color --tail 60 api frontend 2>&1 \
+            | sed -E 's#postgres(ql)?://[^[:space:]]+#postgresql://[redacted]#g'
       - name: Cleanup synthetic staging containers
         if: always()
         run: docker compose --env-file .env.staging -f deploy/staging/compose.yml down -v --remove-orphans || true
