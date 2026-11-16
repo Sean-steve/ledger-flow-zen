@@ -37,3 +37,4 @@ dist-ssr
 automation-local.log
 .env.staging
 .staging-evidence/
+.staging-backups/

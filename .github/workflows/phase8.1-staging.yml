@@ -124,6 +124,12 @@ jobs:
           docker compose --env-file .env.staging -f deploy/staging/compose.yml ps --all
           docker compose --env-file .env.staging -f deploy/staging/compose.yml logs --no-color --tail 60 api frontend 2>&1 \
             | sed -E 's#postgres(ql)?://[^[:space:]]+#postgresql://[redacted]#g'
+      - name: Validate isolated staging PostgreSQL archive and disposable restore
+        run: |
+          bash scripts/staging/backup.sh
+          archive="$(find .staging-backups -maxdepth 1 -name '*.dump' -print -quit)"
+          test -n "$archive"
+          bash scripts/staging/verify-restore.sh "$archive"
       - name: Cleanup synthetic staging containers
         if: always()
         run: docker compose --env-file .env.staging -f deploy/staging/compose.yml down -v --remove-orphans || true
