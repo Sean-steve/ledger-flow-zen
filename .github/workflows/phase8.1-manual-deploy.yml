@@ -1,0 +1,41 @@
+name: Phase 8.1 — Manual Staging Deploy (Approval Required)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type STAGING_ONLY to deploy synthetic-data staging (never production)'
+        required: true
+        type: string
+concurrency:
+  group: fdos-staging-deployment
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: ${{ inputs.confirmation == 'STAGING_ONLY' && (github.ref_name == 'main' || github.ref_name == 'phase8.1/staging-release-evidence') }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate approval and pinned SSH server fingerprint
+        env:
+          STAGING_DEPLOY_HOST: ${{ secrets.FDOS_STAGING_SSH_HOST }}
+          STAGING_DEPLOY_USER: ${{ secrets.FDOS_STAGING_SSH_USER }}
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.FDOS_STAGING_SSH_PRIVATE_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.FDOS_STAGING_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [[ "$STAGING_DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || exit 1
+          [[ "$STAGING_DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || exit 1
+          [[ -n "$STAGING_SSH_PRIVATE_KEY" && -n "$STAGING_KNOWN_HOSTS" ]] || exit 1
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$STAGING_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
+            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
+            "bash /opt/fdos/ledger-flow-zen/scripts/staging/remote-deploy.sh '${GITHUB_SHA}' '${GITHUB_REF_NAME}'"
+      - name: Do not change production release flag
+        run: echo "Staging deployment requested; KRA, M-Pesa, external messages and production release remain blocked."
