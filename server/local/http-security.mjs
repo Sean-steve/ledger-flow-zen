@@ -11,7 +11,7 @@ function sameOrigin(url) {
 export function assertLocalRuntime(env=process.env){
  const mode=String(env.FDOS_RELEASE_MODE??"local").toLowerCase();
  if(!["local","staging"].includes(mode))
-   throw error("Financial Document OS public production runtime is not enabled");
+   throw error("Local financial API cannot start as a public production runtime");
  const db=parsedUrl(env.DATABASE_URL,"PostgreSQL URL");
  if(!["postgresql:","postgres:"].includes(db.protocol)||!db.pathname||db.pathname==="/")
    throw error("DATABASE_URL must contain a valid PostgreSQL database");
