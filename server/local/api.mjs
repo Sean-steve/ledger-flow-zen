@@ -69,7 +69,7 @@ export function createLocalApiServer() {
     if (req.method==="GET" && path==="/api/local/health") {
       try {
         await database`SELECT 1`;
-        return json(res,200,{status:"ok",backend:"local-postgres"});
+        return json(res,200,{status:"ok",backend:process.env.FDOS_RELEASE_MODE==="staging"?"staging-postgres":"local-postgres"});
       } catch { return json(res,503,{error:"Database unavailable"}); }
     }
     if (req.method==="GET" && path==="/api/local/auth/user") {

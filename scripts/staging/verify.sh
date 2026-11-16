@@ -14,7 +14,7 @@ compose=(docker compose --env-file .env.staging -f deploy/staging/compose.yml)
 "${compose[@]}" exec -T db pg_isready -U fdos_stage -d fdos_staging >/dev/null
 "${compose[@]}" exec -T api node --input-type=module -e '
 const x=await fetch("http://127.0.0.1:5012/api/local/health");
-if(!x.ok||(await x.json()).backend!=="local-postgres")process.exit(1);
+if(!x.ok||(await x.json()).backend!=="staging-postgres")process.exit(1);
 '
 "${compose[@]}" exec -T frontend node --input-type=module -e '
 const x=await fetch("http://127.0.0.1:3000/");

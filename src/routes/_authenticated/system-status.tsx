@@ -29,7 +29,7 @@ function SystemReadiness(){
   <header className="flex flex-wrap items-start justify-between gap-4">
    <div><h1 className="text-3xl">System Readiness</h1>
     <p className="mt-1 text-sm text-muted-foreground">
-     Local operational diagnostics for {business.name}. This is not a production certificate.
+     Operational diagnostics for {business.name}. Neither local nor staging checks are a production certificate.
     </p></div>
    <Button variant="outline" onClick={()=>void report.refetch()} disabled={report.isFetching}>
     <RefreshCcw className="size-4"/>{report.isFetching?"Checking…":"Run checks"}
@@ -43,7 +43,7 @@ function SystemReadiness(){
     <ShieldAlert className="size-7 shrink-0 text-destructive"/>
     <div className="space-y-2">
      <Badge variant="destructive">PRODUCTION BLOCKED</Badge>
-     <p className="text-sm">Local development and testing may continue.
+     <p className="text-sm">{report.data.runtime.stagingOnly?"Protected staging validation may continue.":"Local development and testing may continue."}
       This application is not a certified public financial service.</p>
      <p className="text-xs text-muted-foreground">
       Last checked: {new Date(report.data.checkedAt).toLocaleString()} ·

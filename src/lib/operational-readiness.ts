@@ -1,8 +1,8 @@
 import {useMutation,useQuery,useQueryClient} from "@tanstack/react-query";
 export type OperationalReadiness={
  releaseGate:"BLOCKED";
- certification:"LOCAL_TESTING_ONLY";
- runtime:{origin:string;host:string;localOnly:true;productionEnabled:false;
+ certification:"LOCAL_TESTING_ONLY"|"STAGING_PREPARATION_ONLY";
+ runtime:{origin:string;host:string;localOnly:boolean;stagingOnly:boolean;productionEnabled:false;
   backend:string;publicHttpsAvailable:false};
  database:{postgresMajor:number;moduleReady:boolean;
   moduleChecks:Record<string,boolean>};
