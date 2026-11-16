@@ -35,7 +35,10 @@ function GuardIntegrationPage() {
   const [busy, setBusy] = useState("");
   const [loadError, setLoadError] = useState("");
   const owner = team.data?.members.some(m => m.userId === session.userId && m.role === "OWNER") ?? false;
-  const invoices = (ledger.data ?? []).filter(x => x.status === "ISSUED" && x.currency === "KES");
+  const invoices = (ledger.data ?? []).filter(
+    (x): x is typeof x & { invoice_id: string } =>
+      typeof x.invoice_id === "string" && x.status === "ISSUED" && x.currency === "KES"
+  );
   const selected = invoices.find(x => x.invoice_id === invoiceId);
   const alreadyLinked = rows.some(row => row.invoiceId === invoiceId);
   const recent = rows.filter(row => row.eventId).slice(0, 20);
