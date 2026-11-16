@@ -12,7 +12,7 @@ function parseSession(req) {
   return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 function cookie(token, age) {
-  return `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/local; Max-Age=${age}; Priority=High`;
+  return `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/local; Max-Age=${age}; Priority=High${process.env.FDOS_RELEASE_MODE==="staging"?"; Secure":""}`;
 }
 async function passwordHash(password) {
   const salt=randomBytes(16).toString("hex");
@@ -83,7 +83,7 @@ export async function handleAuth(req, res, action, body) {
   }
   throttle(req.socket.remoteAddress+":"+email);
   if(action==="signup") {
-    if (process.env.FDOS_LOCAL_ALLOW_SIGNUP==="NO") throw new Error("Local registration is disabled");
+    if (process.env.FDOS_RELEASE_MODE==="staging"||process.env.FDOS_LOCAL_ALLOW_SIGNUP==="NO") throw new Error("Public registration is disabled in this environment");
     const fullName=String(body?.fullName??"").trim().slice(0,120);
     const hash=await passwordHash(password);
     let users;

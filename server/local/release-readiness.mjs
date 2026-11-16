@@ -40,15 +40,15 @@ export async function releaseReadiness(userId,body,env=process.env){
   "No independently certified KRA eTIMS fiscal device or production acceptance evidence.",
   "No verified live M-Pesa settlement/callback deployment and merchant statement reconciliation.",
   "No publicly accessible HTTPS customer portal, verified sender/Meta delivery webhooks or SSO/MFA.",
-  "Local-only PostgreSQL and single-machine API are not a production hosting/backup strategy.",
+  "Staging infrastructure and backups are not proven production readiness or an audited disaster-recovery strategy.",
   "No certified off-host encrypted backup restore drill, monitoring/on-call or production disaster recovery.",
  ];
  if(Object.values(schema[0]).some(v=>v!==true))blockers.unshift("Required local database modules are missing.");
  if(version[0]?.version<160000)blockers.unshift("PostgreSQL 16 or later is required for local certification.");
  return {
   releaseGate:"BLOCKED",
-  certification:"LOCAL_TESTING_ONLY",
-  runtime:{...setup,backend:"LOCAL_POSTGRES",
+  certification:setup.stagingOnly?"STAGING_PREPARATION_ONLY":"LOCAL_TESTING_ONLY",
+  runtime:{...setup,backend:setup.stagingOnly?"STAGING_POSTGRES":"LOCAL_POSTGRES",
     publicHttpsAvailable:false,productionEnabled:false},
   database:{postgresMajor:Math.floor(version[0].version/10000),
     moduleChecks:schema[0],moduleReady:Object.values(schema[0]).every(Boolean)},

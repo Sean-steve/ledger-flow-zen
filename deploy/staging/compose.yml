@@ -1,0 +1,108 @@
+name: fdos-dedicated-staging
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fdos_staging
+      POSTGRES_USER: fdos_stage
+      POSTGRES_PASSWORD: ${FDOS_STAGE_DB_PASSWORD:?Set a strong, unique staging database password}
+    volumes:
+      - stage_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U fdos_stage -d fdos_staging"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - private
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/staging/Dockerfile.api
+    restart: unless-stopped
+    env_file:
+      - ../../.env.staging
+    environment:
+      NODE_ENV: production
+      FDOS_RELEASE_MODE: staging
+      FDOS_STAGING_CONFIRMED: "YES"
+      FDOS_STAGE_DATA_POLICY: SYNTHETIC_ONLY
+      FDOS_API_HOST: 0.0.0.0
+      FDOS_API_PORT: "5012"
+      FDOS_STAGE_DOMAIN: ${FDOS_STAGE_DOMAIN:?Provide dedicated staging DNS}
+      FDOS_FRONTEND_ORIGIN: https://${FDOS_STAGE_DOMAIN:?Provide dedicated staging DNS}
+      FDOS_LOCAL_ALLOW_SIGNUP: "NO"
+      FDOS_COMM_MODE: preview
+      FDOS_MPESA_MODE: preview
+      FDOS_ETIMS_MODE: preview
+      FDOS_AUTOMATION_LIVE_ENABLED: "NO"
+      FDOS_AUTOMATION_LIVE_APPROVED: "NO"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - private
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:5012/api/local/health').then(x=>process.exit(x.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/staging/Dockerfile.frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - private
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3000/').then(x=>process.exit(x.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 12
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - ../../.env.staging
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - private
+      - edge
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  private:
+    internal: true
+  edge: {}
+
+volumes:
+  stage_pgdata: {}
+  caddy_data: {}
+  caddy_config: {}

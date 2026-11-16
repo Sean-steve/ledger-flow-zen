@@ -1,0 +1,135 @@
+name: Phase 8.1 — Dedicated Staging Infrastructure Certification
+on:
+  push:
+    branches: ['phase8.1/staging-release-evidence']
+  pull_request:
+    paths:
+      - 'server/local/**'
+      - 'src/**'
+      - 'deploy/staging/**'
+      - 'scripts/staging/**'
+      - 'tests/phase8.1/**'
+      - '.github/workflows/phase8.1-staging.yml'
+      - 'vite.config.ts'
+      - '.env.staging.example'
+permissions:
+  contents: read
+jobs:
+  staging-contracts:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://fdos_dev:test@127.0.0.1:55434/fdos_local
+      FDOS_FRONTEND_ORIGIN: http://localhost:3000
+      FDOS_RELEASE_MODE: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate source scripts and avoid tracked secrets
+        run: |
+          for f in scripts/staging/*.sh; do bash -n "$f"; done
+          for f in server/local/*.mjs scripts/staging/*.mjs; do node --check "$f"; done
+          ! git ls-files | grep -E '(^|/)\.env\.staging$|\.staging-evidence/|\.backups/|\.dump$'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Certify fail-closed staging runtime contract
+        run: node --test tests/phase8.1/staging.test.mjs
+      - name: Build actual Node server for staging, not Cloudflare worker
+        env:
+          NITRO_PRESET: node-server
+        run: |
+          bun run build
+          test -f .output/server/index.mjs
+          test -d .output/public
+      - name: Verify strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Smoke test built Node frontend
+        run: |
+          HOST=127.0.0.1 PORT=3456 NODE_ENV=production node .output/server/index.mjs &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for n in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3456/; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
+  staging-containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate disposable, NON-LIVE staging secrets
+        run: |
+          hash="$(docker run --rm caddy:2-alpine caddy hash-password --plaintext ci-placeholder-only)"
+          cat > .env.staging <<EOF
+          FDOS_STAGE_DOMAIN=ci-staging.invalid
+          FDOS_STAGE_ACME_EMAIL=ci@example.invalid
+          FDOS_STAGE_BASIC_USER=ci-reviewer
+          FDOS_STAGE_BASIC_HASH='$hash'
+          FDOS_STAGE_DB_PASSWORD=ci-disposable-db-only-3321
+          DATABASE_URL=postgresql://fdos_stage:ci-disposable-db-only-3321@db:5432/fdos_staging
+          FDOS_STAGE_BOOTSTRAP_EMAIL=ci-reviewer@example.invalid
+          FDOS_RELEASE_MODE=staging
+          FDOS_STAGING_CONFIRMED=YES
+          FDOS_STAGE_DATA_POLICY=SYNTHETIC_ONLY
+          FDOS_API_HOST=0.0.0.0
+          FDOS_API_PORT=5012
+          FDOS_FRONTEND_ORIGIN=https://ci-staging.invalid
+          FDOS_LOCAL_ALLOW_SIGNUP=NO
+          FDOS_COMM_MODE=preview
+          FDOS_MPESA_MODE=preview
+          FDOS_ETIMS_MODE=preview
+          FDOS_AUTOMATION_LIVE_ENABLED=NO
+          FDOS_AUTOMATION_LIVE_APPROVED=NO
+          EOF
+          chmod 600 .env.staging
+      - name: Validate Docker Compose and Caddy syntax, never connect to KRA or Daraja
+        run: |
+          bash scripts/staging/preflight.sh
+          docker run --rm --env-file .env.staging -v "$PWD/deploy/staging/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile --pretty >/dev/null
+      - name: Provision separate PostgreSQL 16 schema in Docker
+        run: |
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml up -d --wait db
+          bash scripts/staging/migrate.sh
+          bash scripts/staging/migrate.sh
+      - name: Build and start private staging API and frontend
+        run: |
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml up -d --build --wait api frontend
+      - name: Verify synthetic tester, HTTPS cookie requirement and disabled public signup
+        run: |
+          printf 'ci-reviewer-strong-password-2200\n' | docker compose --env-file .env.staging -f deploy/staging/compose.yml exec -T api node scripts/staging/provision-reviewer.mjs
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml exec -T api node --input-type=module -e '
+            const health=await fetch("http://127.0.0.1:5012/api/local/health");
+            if(!health.ok)process.exit(1);
+            const base="http://127.0.0.1:5012";
+            const req=(path,payload)=>fetch(base+path,{method:"POST",
+              headers:{"Content-Type":"application/json","Origin":"https://ci-staging.invalid"},
+              body:JSON.stringify(payload)});
+            const signup=await req("/api/local/auth/signup",
+              {email:"notallowed@example.invalid",password:"notallowedpassword123"});
+            if(signup.ok)throw Error("Staging signup was not disabled");
+            const signin=await req("/api/local/auth/signin",
+              {email:"ci-reviewer@example.invalid",password:"ci-reviewer-strong-password-2200"});
+            if(!signin.ok)throw Error("Staging login unsuccessful");
+            if(!String(signin.headers.get("set-cookie")).includes("; Secure"))
+              throw Error("Staging session missing Secure cookie");
+          '
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml exec -T frontend node -e '
+            fetch("http://127.0.0.1:3000/").then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))
+          '
+      - name: Diagnose failed synthetic container health
+        if: failure()
+        run: |
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml ps --all
+          docker compose --env-file .env.staging -f deploy/staging/compose.yml logs --no-color --tail 60 api frontend 2>&1 \
+            | sed -E 's#postgres(ql)?://[^[:space:]]+#postgresql://[redacted]#g'
+      - name: Validate isolated staging PostgreSQL archive and disposable restore
+        run: |
+          bash scripts/staging/backup.sh
+          archive="$(find .staging-backups -maxdepth 1 -name '*.dump' -print -quit)"
+          test -n "$archive"
+          bash scripts/staging/verify-restore.sh "$archive"
+      - name: Cleanup synthetic staging containers
+        if: always()
+        run: docker compose --env-file .env.staging -f deploy/staging/compose.yml down -v --remove-orphans || true

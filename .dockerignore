@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+.output
+dist
+.backups
+.env
+.env.*
+!.env.staging.example
+*.dump
+*.backup
+*.log
+coverage
+.DS_Store
