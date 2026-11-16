@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - 'server/local/guard-connector.mjs'
+      - 'src/routes/_authenticated/guard.tsx'
+      - 'src/lib/guard-integration.ts'
+      - 'src/components/app-shell.tsx'
       - 'server/local/guard-worker.mjs'
       - 'server/local/api.mjs'
       - 'drizzle/migrations/0011_guard_sandbox_outbox.sql'
@@ -87,6 +90,10 @@ jobs:
           DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nflake_guard_ci npm run migrate
       - name: Install FDOS dependencies
         run: bun install --frozen-lockfile
+      - name: Verify Financial Document OS frontend and strict types
+        run: |
+          bun run build
+          bunx tsc --noEmit
       - name: Start independent Guard service on loopback
         run: |
           DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nflake_guard_ci node guard-under-test/src/server.mjs > "$RUNNER_TEMP/guard-sandbox.log" 2>&1 &
