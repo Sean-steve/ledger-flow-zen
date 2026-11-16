@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS fdos_local.guard_outbox (
   link_id uuid NOT NULL REFERENCES fdos_local.guard_links(id) ON DELETE RESTRICT,
   event_id uuid NOT NULL UNIQUE DEFAULT gen_random_uuid(),
   sequence bigint NOT NULL CHECK (sequence > 0),
-  payload jsonb NOT NULL,
+  payload text NOT NULL CHECK (length(payload) BETWEEN 5 AND 32768),
   payload_hash text NOT NULL,
   status text NOT NULL DEFAULT 'PENDING'
     CHECK (status IN ('PENDING','RETRY','DELIVERED','HELD')),
